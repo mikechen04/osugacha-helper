@@ -9,6 +9,7 @@ from urllib.parse import quote
 from osugacha_ev import ev as evmath
 from osugacha_ev import alerts as alertmod
 from osugacha_ev import bp as bpmod
+from osugacha_ev import items as itemlib
 from osugacha_ev import upgrades
 from osugacha_ev import fmt
 from osugacha_ev.api import ApiError, OsuGachaClient
@@ -42,6 +43,7 @@ class App:
         self.table: DropTable = load_drops(settings.drops_file)
         self.store = SnapshotStore(settings.db_file)
         self.prices = PriceService(self.client, observer=self._observe)
+        self._market_items: tuple[float, list[str]] = (0.0, [])
 
     async def aclose(self) -> None:
         await self.client.aclose()
@@ -88,14 +90,43 @@ class App:
                 flagged.add(item)
         return flagged
 
+    async def market_item_ids(self) -> list[str]:
+        """every item id on the market (mods and cards excluded), plus the ones in drops.yaml.
+
+        the market is scanned at most every 15 minutes, so new items show up on their own.
+        """
+        stamped, cached = self._market_items
+        if cached and time.time() - stamped < SNAPSHOT_EVERY:
+            return cached
+        found = [FUEL, *self.table.names]
+        try:
+            offset = 0
+            for _ in range(10):
+                page = await self.client.get(
+                    "market/listings",
+                    {"kind": "item", "sort": "price_asc", "limit": 100, "offset": offset},
+                )
+                rows = page.get("items", [])
+                found += [r["item"]["id"] for r in rows if r.get("mode") == "bin" and r.get("item")]
+                offset += len(rows)
+                if not rows or offset >= page.get("total", 0):
+                    break
+        except Exception:
+            if cached:
+                return cached
+            raise
+        ids = itemlib.sort_items(found)
+        self._market_items = (time.time(), ids)
+        return ids
+
     def _label(self, item_id: str) -> str:
         if item_id.startswith("mod:"):
             _, mod_type, star = item_id.split(":")
             return f"{mod_type} {star}★"
-        return self.table.names.get(item_id, item_id.replace("_", " "))
+        return self.table.names.get(item_id) or itemlib.item_name(item_id)
 
     async def prices_report(self) -> Report:
-        ids = [FUEL] + [i for i in self.table.names if i != FUEL]
+        ids = await self.market_item_ids()
         book = await self.prices.get(ids)
         now = time.time()
         shaky = self.shaky(book, now)
@@ -120,7 +151,8 @@ class App:
         last = self.store.last_snapshot_ts()
         if not force and last is not None and time.time() - last < SNAPSHOT_EVERY - 60:
             return 0
-        book = await self.prices.get(self._tracked(), force=True)
+        ids = list(dict.fromkeys(self._tracked() + await self.market_item_ids()))
+        book = await self.prices.get(ids, force=True)
         return self.store.add(book.lbins, book.fetched_at)
 
     async def fuel_alerts(self, now: float | None = None) -> list[tuple[int, Report]]:

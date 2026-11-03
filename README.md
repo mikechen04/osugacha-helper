@@ -11,7 +11,7 @@ Uses your read-only osu! gacha API key (`Authorization: Bearer og_...`) for `/ma
 | Command | What it does |
 | --- | --- |
 | `/ev` | Maps ranked by profit after fuel: `# / map / diff / gross ev / profit`. Footer shows the fuel lbin used and the price time |
-| `/prices` | lbin for Fuel and the drop items, with % change vs 6h ago (falls back to the oldest snapshot and says e.g. `vs 3h` until 6h of history exists) |
+| `/prices` | lbin for every item on the market (mods and cards excluded, new items appear on their own), with % change vs 6h ago and how many units vanished from the listings in the last hour. Items from `drops.yaml` keep their names |
 
 | `/alerts on` or `/alerts off` | Pings you in a dm when someone quicksells Fuel. `percent` (default 10) is how far under the next lbin a fresh listing has to be |
 

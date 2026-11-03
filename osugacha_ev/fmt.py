@@ -9,6 +9,7 @@ from osugacha_ev.ev import EvRow
 from osugacha_ev.store import Change
 
 MAX_ROWS = 20
+MAX_PRICE_ROWS = 60
 MAP_W = 15
 SEP = " ♥ "
 EV_FOOTER = "meow meow wruff arf awruf"
@@ -109,11 +110,14 @@ def prices_table(
     label = max(changes, key=lambda c: c.age).label if changes else "6h"
     head = f"{'item':<16}  {'lbin':>10}  {'vs ' + label:>9}  {'gone/h':>6}"
     lines = [f"per unit{SEP}prices {stamp(ts)}", head, "-" * len(head)]
-    for name, lbin, change, shaky, gone in entries:
+    hidden = max(0, len(entries) - MAX_PRICE_ROWS)
+    for name, lbin, change, shaky, gone in entries[:MAX_PRICE_ROWS]:
         lines.append(
             f"{clip(name, 16):<16}  {star(lbin) if lbin is not None else 'n/a':>10}  "
             f"{pct(change.pct) if change else '-':>9}  {units(gone):>6}" + (" !" if shaky else "")
         )
+    if hidden:
+        lines.append(f"+{hidden} more items")
     fuel = next((lbin for name, lbin, _, _, _ in entries if name == "fuel"), None)
     if note := refill_note(fuel):
         lines.append(note)
