@@ -88,3 +88,15 @@ async def test_besttime_report_lists_sell_and_buy_hours(app):
     assert any(l.startswith("busiest:") and "19:00" in l for l in lines)
     assert report.description == report.description.lower()
     assert max(len(l) for l in lines) <= 54
+
+
+def test_gone_last_hour_needs_a_full_hour_of_watching():
+    store = SnapshotStore(":memory:")
+    store.observe("fuel", [("a", 7000.0, 2), ("b", 7500.0, 3)], T0, True)
+    store.observe("fuel", [("b", 7500.0, 3)], T0 + 900, True)  # a (2 units) goes
+    assert store.gone_last_hour("fuel", T0 + 1800) is None  # only 30 minutes watched
+    assert store.gone_last_hour("nothing", T0 + 9999) is None
+    assert store.gone_last_hour("fuel", T0 + 3601) == 2
+    store.observe("fuel", [], T0 + 1800, True)  # b (3 units) goes
+    assert store.gone_last_hour("fuel", T0 + 3601) == 5
+    assert store.gone_last_hour("fuel", T0 + 1800 + 3601) == 0  # both fell out of the hour

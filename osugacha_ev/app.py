@@ -105,6 +105,7 @@ class App:
                 book.lbins[i],
                 self.store.change(i, book.lbins[i], now),
                 i in shaky,
+                self.store.gone_last_hour(i, now),
             )
             for i in ids
         ]

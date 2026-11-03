@@ -303,9 +303,9 @@ def test_prices_output_style():
     change = store.change("fuel", 7350.0, 1_000_000)
     table = fmt.prices_table(
         [
-            ("fuel", 7350.0, change, False),
-            ("gold replay", None, None, False),
-            ("mod fragment", 12.0, None, True),
+            ("fuel", 7350.0, change, False, 26),
+            ("gold replay", None, None, False, None),
+            ("mod fragment", 12.0, None, True, 125_850),
         ],
         1_762_144_320,
     )
@@ -316,7 +316,7 @@ def test_prices_output_style():
     assert "+5.0%" in lines[3] and "★7,350" in lines[3]
     assert "n/a" in lines[4]
     assert lines[5].endswith(" !")
-    assert max(len(line) for line in lines) <= 42
+    assert max(len(line) for line in lines) <= 54
 
 
 def test_lc_strips_em_dashes_and_caps():
@@ -353,6 +353,6 @@ def test_refill_note_only_when_fuel_lbin_is_above_the_refill():
     assert "refill" not in fmt.ev_table(rows, 7900, 1_762_144_320)
     assert "refill" not in fmt.ev_table(rows, 7500, 1_762_144_320)
     assert over == over.lower() and max(len(l) for l in over.strip("`\n").splitlines()) <= 54
-    prices_over = fmt.prices_table([("fuel", 8000.0, None, False)], 1_762_144_320)
-    prices_ok = fmt.prices_table([("fuel", 7900.0, None, False)], 1_762_144_320)
+    prices_over = fmt.prices_table([("fuel", 8000.0, None, False, None)], 1_762_144_320)
+    prices_ok = fmt.prices_table([("fuel", 7900.0, None, False, None)], 1_762_144_320)
     assert "refill beats fuel lbin" in prices_over and "refill" not in prices_ok

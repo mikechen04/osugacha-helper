@@ -195,6 +195,21 @@ class SnapshotStore:
         self._db.commit()
         return len(gone)
 
+    def gone_last_hour(self, item: str, now: float | None = None) -> int | None:
+        """units that vanished from the listings in the last hour.
+
+        None until the item has been watched for a full hour, so a short history
+        is never shown as a low number.
+        """
+        now = now if now is not None else time.time()
+        row = self._db.execute("select first_ts from obs where item = ?", (item,)).fetchone()
+        if row is None or now - row[0] < 3600:
+            return None
+        total = self._db.execute(
+            "select coalesce(sum(qty), 0) from gone where item = ? and ts >= ?", (item, int(now - 3600))
+        ).fetchone()[0]
+        return int(total)
+
     def hour_profile(self, item: str, now: float | None = None, days: int = 14) -> "HourProfile | None":
         """average stored lbin by utc hour, plus units gone per day by hour."""
         now = now if now is not None else time.time()

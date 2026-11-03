@@ -95,19 +95,26 @@ def ev_table(
     return lc(code(lines))
 
 
+def units(n: int | None) -> str:
+    if n is None:
+        return "-"
+    return str(n) if n < 1000 else f"{n / 1000:.1f}k"
+
+
 def prices_table(
-    entries: list[tuple[str, float | None, Change | None, bool]], ts: float
+    entries: list[tuple[str, float | None, Change | None, bool, int | None]], ts: float
 ) -> str:
-    changes = [c for _, _, c, _ in entries if c]
+    """rows are (name, lbin, change, volatile, units gone in the last hour)."""
+    changes = [c for _, _, c, _, _ in entries if c]
     label = max(changes, key=lambda c: c.age).label if changes else "6h"
-    head = f"{'item':<16}  {'lbin':>10}  {'vs ' + label:>9}"
+    head = f"{'item':<16}  {'lbin':>10}  {'vs ' + label:>9}  {'gone/h':>6}"
     lines = [f"per unit{SEP}prices {stamp(ts)}", head, "-" * len(head)]
-    for name, lbin, change, shaky in entries:
+    for name, lbin, change, shaky, gone in entries:
         lines.append(
             f"{clip(name, 16):<16}  {star(lbin) if lbin is not None else 'n/a':>10}  "
-            f"{pct(change.pct) if change else '-':>9}" + (" !" if shaky else "")
+            f"{pct(change.pct) if change else '-':>9}  {units(gone):>6}" + (" !" if shaky else "")
         )
-    fuel = next((lbin for name, lbin, _, _ in entries if name == "fuel"), None)
+    fuel = next((lbin for name, lbin, _, _, _ in entries if name == "fuel"), None)
     if note := refill_note(fuel):
         lines.append(note)
     return lc(code(lines))
