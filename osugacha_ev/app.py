@@ -202,20 +202,38 @@ class App:
                 break
         return found
 
-    async def _copy_price(self, player: dict) -> float | None:
-        """cheapest market listing of any card of this player, the price of a spare copy."""
-        page = await self.client.get(
-            "market/listings",
-            {"kind": "card", "q": player["username"], "sort": "price_asc", "limit": 100},
-        )
-        prices = [
-            float(i["price"])
-            for i in page.get("items", [])
-            if i.get("kind") == "card"
-            and i.get("mode") == "bin"
-            and (i.get("card") or {}).get("player", {}).get("id") == player["id"]
-        ]
-        return min(prices) if prices else None
+    async def _copy_price(self, card: dict) -> float | None:
+        """cheapest market listing of a spare copy that can be fed into this card.
+
+        a signature card only takes a copy of the same signature, and a normal
+        card only takes normal copies, so the two are priced apart.
+        """
+        player = card["player"]
+        sig_id = (card.get("sig") or {}).get("id")
+        for page_no in range(5):
+            page = await self.client.get(
+                "market/listings",
+                {
+                    "kind": "card",
+                    "q": player["username"],
+                    "sort": "price_asc",
+                    "limit": 100,
+                    "offset": page_no * 100,
+                },
+            )
+            rows = page.get("items", [])
+            for row in rows:  # cheapest first, so the first match is the answer
+                listed = row.get("card") or {}
+                if (
+                    row.get("kind") == "card"
+                    and row.get("mode") == "bin"
+                    and listed.get("player", {}).get("id") == player["id"]
+                    and (listed.get("sig") or {}).get("id") == sig_id
+                ):
+                    return float(row["price"])
+            if len(rows) < 100:
+                break
+        return None
 
     async def bp_report(self, username: str, count: int = 8) -> Report:
         """the cheapest battle power upgrades for a player's team, from public data only."""
@@ -244,7 +262,7 @@ class App:
             options.append(upgrades.ascend_option(card_name, card, 0, prices, {}, 0, account_level, False))
             options.append(upgrades.ascend_option(card_name, card, 0, prices, {}, 0, account_level, True))
             if card.eidolon < 6:
-                copy = await self._copy_price(raw["player"])
+                copy = await self._copy_price(raw)
                 if copy is not None:
                     options.append(upgrades.eidolon_option(card_name, card, 1, copy))
         found = [o for o in options if o]

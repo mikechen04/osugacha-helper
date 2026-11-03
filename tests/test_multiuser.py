@@ -55,9 +55,11 @@ def make_app(tmp_path, seen):
             params = request.url.params
             if params.get("kind") == "card":
                 return httpx.Response(200, json={"items": [
-                    {"kind": "card", "mode": "bin", "price": 150, "card": {"player": {"id": 7}}},
                     {"kind": "card", "mode": "bin", "price": 5, "card": {"player": {"id": 99}}},
-                ], "total": 2})
+                    {"kind": "card", "mode": "bin", "price": 150, "card": {"player": {"id": 7}, "sig": None}},
+                    {"kind": "card", "mode": "bin", "price": 45000,
+                     "card": {"player": {"id": 7}, "sig": {"id": "volley", "tier": "ssr"}}},
+                ], "total": 3})
             return httpx.Response(200, json=listing_page(params.get("itemId", "x")))
         if path.startswith("users/Nobody"):
             return httpx.Response(404, json={"error": {"code": "not_found"}})
@@ -87,4 +89,15 @@ async def test_bp_unknown_player_and_find_user(tmp_path):
     report = await app.bp_report("Nobody")
     assert report.description == "no player named nobody"
     assert await app.find_user("Nobody") is None
+    await app.aclose()
+
+
+async def test_signature_card_is_priced_with_signature_copies(tmp_path):
+    app = make_app(tmp_path, [])
+    normal = card("Tanky", 7)
+    signed = card("Tanky", 7, sig={"id": "volley", "tier": "ssr"})
+    other_sig = card("Tanky", 7, sig={"id": "bite", "tier": "r"})
+    assert await app._copy_price(normal) == 150
+    assert await app._copy_price(signed) == 45000
+    assert await app._copy_price(other_sig) is None  # nobody lists that signature
     await app.aclose()
