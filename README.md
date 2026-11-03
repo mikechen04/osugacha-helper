@@ -44,6 +44,8 @@ maps:
       replay_2: [0, 1]
 ```
 
+If you have measured a real average from your own farming, give it instead of the range midpoint: `replay_2: {range: [0, 1], avg: 77/120}` (77 drops over 120 runs).
+
 Item ids are the market ids (`fuel`, `replay_1`, `replay_2`, `replay_3`, `insignia_tank_1`, `mod_fragment`, ...). Every id listed under `items:` in the file is priced and shown in `/prices`.
 
 ## Run the Discord bot

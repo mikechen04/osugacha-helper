@@ -62,10 +62,30 @@ def test_drops_yaml_loads_and_lowercases(tmp_path):
     assert table.item_ids == ["fuel", "replay_1", "replay_2"]
 
 
+def test_measured_average_overrides_range_midpoint(tmp_path):
+    path = tmp_path / "d.yaml"
+    path.write_text(
+        "maps:\n  - map: gc\n    diff: gal\n    stars: [440, 520]\n    items:\n"
+        "      replay_1: {range: [1, 3], avg: 236/120}\n"
+        "      replay_2: {range: [0, 1], avg: 77/120}\n",
+        encoding="utf-8",
+    )
+    bronze, silver = load_drops(path).entries[0].items
+    assert bronze.avg == pytest.approx(236 / 120)
+    assert silver.avg == pytest.approx(77 / 120)
+    assert (silver.low, silver.high) == (0, 1)
+    row = compute(load_drops(path).entries[0], {"replay_1": 150.0, "replay_2": 600.0}, 7500)
+    assert row.gross == pytest.approx((480 + 236 / 120 * 150 + 77 / 120 * 600) * 6)
+
+
 def test_repo_drops_yaml_is_valid():
     from osugacha_ev.config import ROOT
 
-    assert load_drops(ROOT / "drops.yaml").entries
+    table = load_drops(ROOT / "drops.yaml")
+    assert len(table.entries) >= 3
+    for entry in table.entries:
+        assert len(entry.label) <= 12 and len(entry.diff) <= 5
+        assert all(d.item in table.names for d in entry.items)
 
 
 # api

@@ -1,9 +1,11 @@
-# per run drops. avg = (min + max) / 2. edit freely.
+# per run drops. edit freely.
 # the api does not expose drop tables to api keys, so these come from the
-# "drops a win" panel on the maps page.
+# "drops a win" panel on the maps page and from your own farm logs.
 #
 # short: name shown in /ev (12 chars max). diff: 5 chars max.
-# stars and item amounts are a number or [min, max].
+# stars and item amounts are a number or [min, max]. the average used is the
+# middle of the range. to use a measured average instead, write
+#   replay_2: {range: [0, 1], avg: 77/120}      # 77 drops over 120 runs
 # estimated: true puts a * next to the map in /ev.
 
 # item id -> name shown in /prices. every id here is priced.
@@ -12,17 +14,45 @@ items:
   replay_1: bronze replay
   replay_2: silver replay
   replay_3: gold replay
+  insignia_tank_2: tank insig 2
+  insignia_tank_3: tank insig 3
+  insignia_dps_2: dps insig 2
+  insignia_dps_3: dps insig 3
+  insignia_support_2: supp insig 2
+  insignia_support_3: supp insig 3
+  insignia_cc_2: mage insig 2
+  insignia_cc_3: mage insig 3
 
 maps:
-  # maps page, galactic difficulty: stars 440-520, bronze 1-3, silver 0-1
+  # galactic. 120 run sample: 236 bronze, 77 runs dropped 1 silver.
   - map: galaxy collapse
     short: gal collapse
     diff: gal
     stars: [440, 520]
     items:
-      replay_1: [1, 3]
-      replay_2: [0, 1]
+      replay_1: {range: [1, 3], avg: 236/120}
+      replay_2: {range: [0, 1], avg: 77/120}
 
-  # still needed: the big black and freedom dive drop insignia (x1 and 1-2 of
-  # two classes each, which tiers?), plus remote control, everything will
-  # freeze, scarlet rose, shiori, and the other difficulties.
+  # top difficulty, no stars. mage insignia is insignia_cc on the market.
+  - map: the big black
+    short: big black
+    diff: top
+    stars: 0
+    items:
+      insignia_tank_2: 1
+      insignia_tank_3: [1, 2]
+      insignia_dps_2: 1
+      insignia_dps_3: [1, 2]
+
+  - map: freedom dive
+    short: freedom dive
+    diff: top
+    stars: 0
+    items:
+      insignia_support_2: 1
+      insignia_support_3: [1, 2]
+      insignia_cc_2: 1
+      insignia_cc_3: [1, 2]
+
+  # still needed: remote control, everything will freeze, scarlet rose, shiori,
+  # and the lower difficulties of every map.
