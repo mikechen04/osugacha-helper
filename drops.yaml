@@ -1,0 +1,28 @@
+# per run drops. avg = (min + max) / 2. edit freely.
+# the api does not expose drop tables to api keys, so these come from the
+# "drops a win" panel on the maps page.
+#
+# short: name shown in /ev (12 chars max). diff: 5 chars max.
+# stars and item amounts are a number or [min, max].
+# estimated: true puts a * next to the map in /ev.
+
+# item id -> name shown in /prices. every id here is priced.
+items:
+  fuel: fuel
+  replay_1: bronze replay
+  replay_2: silver replay
+  replay_3: gold replay
+
+maps:
+  # maps page, galactic difficulty: stars 440-520, bronze 1-3, silver 0-1
+  - map: galaxy collapse
+    short: gal collapse
+    diff: gal
+    stars: [440, 520]
+    items:
+      replay_1: [1, 3]
+      replay_2: [0, 1]
+
+  # still needed: the big black and freedom dive drop insignia (x1 and 1-2 of
+  # two classes each, which tiers?), plus remote control, everything will
+  # freeze, scarlet rose, shiori, and the other difficulties.
