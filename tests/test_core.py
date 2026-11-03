@@ -344,3 +344,15 @@ def test_repo_drops_match_hand_calculation_with_fixed_prices():
     items = 380 / 199 * 150 + 126 / 199 * 600
     assert gc.gross == pytest.approx((480 + items) * 6)
     assert gc.profit == pytest.approx(480 * 6 + items * 6 * 0.98 - 7500)
+
+
+def test_refill_note_only_when_fuel_lbin_is_above_the_refill():
+    rows = rank([DiffDrops("m", "d", 500, 500)], {}, 8000)
+    over = fmt.ev_table(rows, 8000, 1_762_144_320)
+    assert "note: \u26057,900 refill beats fuel lbin" in over
+    assert "refill" not in fmt.ev_table(rows, 7900, 1_762_144_320)
+    assert "refill" not in fmt.ev_table(rows, 7500, 1_762_144_320)
+    assert over == over.lower() and max(len(l) for l in over.strip("`\n").splitlines()) <= 54
+    prices_over = fmt.prices_table([("fuel", 8000.0, None, False)], 1_762_144_320)
+    prices_ok = fmt.prices_table([("fuel", 7900.0, None, False)], 1_762_144_320)
+    assert "refill beats fuel lbin" in prices_over and "refill" not in prices_ok

@@ -42,6 +42,7 @@ profit       = after fee - fuel lbin
 
 - **lbin** is the lowest buy-it-now listing price **per unit** (a listing of 2 for 14,600 is 7,300 each). Auctions are ignored.
 - The 2% market fee applies to sold items only, never to Stars.
+- A stamina refill bought with stars gives the same 60 stamina as one Fuel for ★7,900 (`REFILL_STARS` in `config.py`). When the Fuel lbin is above that, `/ev` and `/prices` add a note that the refill is cheaper. The numbers still use the Fuel lbin.
 - Prices are cached for 5 minutes. A snapshot of every tracked lbin is stored in sqlite (`data/lbin.db`) every 15 minutes, which feeds the % change in `/prices`.
 - 429 responses are retried after the `Retry-After` delay.
 

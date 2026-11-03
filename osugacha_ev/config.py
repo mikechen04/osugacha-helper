@@ -12,6 +12,8 @@ ROOT = Path(__file__).resolve().parent.parent
 
 API_BASE = "https://osugacha.com/api/"
 RUNS_PER_FUEL = 6
+# the stars refill gives 60 stamina, the same as one fuel
+REFILL_STARS = 7900
 SELL_FEE = 0.02
 CACHE_TTL = 300
 SNAPSHOT_EVERY = 900

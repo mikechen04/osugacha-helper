@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from osugacha_ev.config import RUNS_PER_FUEL
+from osugacha_ev.config import REFILL_STARS, RUNS_PER_FUEL
 from osugacha_ev.ev import EvRow
 from osugacha_ev.store import Change
 
@@ -46,6 +46,13 @@ def code(lines: list[str]) -> str:
     return "```\n" + "\n".join(lines) + "\n```"
 
 
+def refill_note(fuel_lbin: float | None) -> str | None:
+    """a warning when buying fuel costs more than refilling stamina with stars."""
+    if fuel_lbin is not None and fuel_lbin > REFILL_STARS:
+        return f"note: {star(REFILL_STARS)} refill beats fuel lbin"
+    return None
+
+
 def map_cell(row: EvRow) -> str:
     """map name, with * for estimated drops and ! for shaky lbin."""
     marks = ("*" if row.estimated else "") + ("!" if row.shaky else "")
@@ -83,6 +90,8 @@ def ev_table(
         lines.append(SHAKY_NOTE)
     if missing:
         lines.append("missing lbin counted as 0")
+    if note := refill_note(fuel_lbin):
+        lines.append(note)
     return lc(code(lines))
 
 
@@ -98,6 +107,9 @@ def prices_table(
             f"{clip(name, 16):<16}  {star(lbin) if lbin is not None else 'n/a':>10}  "
             f"{pct(change.pct) if change else '-':>9}" + (" !" if shaky else "")
         )
+    fuel = next((lbin for name, lbin, _, _ in entries if name == "fuel"), None)
+    if note := refill_note(fuel):
+        lines.append(note)
     return lc(code(lines))
 
 
