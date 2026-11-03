@@ -59,7 +59,7 @@ class App:
         ids = self.table.item_ids
         return [FUEL] + [i for i in ids if i != FUEL]
 
-    async def ev_report(self) -> Report:
+    async def ev_report(self, likely_to_sell: bool = True) -> Report:
         if not self.table.entries:
             return Report("ev", fmt.lc("no drops in drops.yaml yet"), "")
         book = await self.prices.get(self._tracked())
@@ -67,7 +67,9 @@ class App:
         if fuel is None:
             return Report("ev", fmt.lc("no fuel listings right now"), "")
         shaky = self.shaky(book)
-        rows = evmath.rank(self.table.entries, book.lbins, fuel, shaky)
+        skip = self.table.no_sale if likely_to_sell else frozenset()
+        rows = evmath.rank(self.table.entries, book.lbins, fuel, shaky, skip)
+        skipped = ", ".join(self._label(i) for i in sorted(skip) if any(r.skipped for r in rows))
         return Report(
             title=fmt.lc("map ev vs fuel"),
             description=fmt.ev_table(
@@ -76,6 +78,7 @@ class App:
                 book.fetched_at,
                 missing=any(r.missing for r in rows),
                 fuel_shaky=FUEL in shaky,
+                skipped=skipped,
             ),
             footer=fmt.EV_FOOTER,
         )

@@ -19,6 +19,7 @@ class EvRow:
     estimated: bool
     missing: tuple[str, ...] = ()
     shaky: bool = False
+    skipped: bool = False
 
 
 def compute(
@@ -26,16 +27,21 @@ def compute(
     lbins: dict[str, float | None],
     fuel_lbin: float,
     shaky: Collection[str] = (),
+    skip: Collection[str] = (),
 ) -> EvRow:
     """per run ev = avg stars + sum(avg qty x lbin).
 
     the 2% market fee only applies to sold items, so stars are never discounted.
-    an item with no lbin counts as 0 and is reported in `missing`. the row is
+    an item with no lbin counts as 0 and is reported in `missing`. items in `skip` (nobody buys them) count as 0 too. the row is
     shaky when a thin or swingy item makes up a real share of the per run ev.
     """
     missing = []
+    skipped = False
     values: dict[str, float] = {}
     for drop in entry.items:
+        if drop.item in skip:
+            skipped = True
+            continue
         price = lbins.get(drop.item)
         if price is None:
             missing.append(drop.item)
@@ -57,6 +63,7 @@ def compute(
         estimated=entry.estimated,
         missing=tuple(missing),
         shaky=per_run > 0 and flagged / per_run >= WARN_SHARE,
+        skipped=skipped,
     )
 
 
@@ -65,6 +72,7 @@ def rank(
     lbins: dict[str, float | None],
     fuel_lbin: float,
     shaky: Collection[str] = (),
+    skip: Collection[str] = (),
 ) -> list[EvRow]:
-    rows = [compute(e, lbins, fuel_lbin, shaky) for e in entries]
+    rows = [compute(e, lbins, fuel_lbin, shaky, skip) for e in entries]
     return sorted(rows, key=lambda r: r.profit, reverse=True)

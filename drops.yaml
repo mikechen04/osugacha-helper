@@ -27,6 +27,13 @@ items:
   insignia_cc_2: mage insig 2
   insignia_cc_3: mage insig 3
 
+# drops nobody buys, so /ev counts them as 0 while likely_to_sell is on (the default).
+# they can still have a stray listing, so /prices shows them. /ev likely_to_sell:false counts them.
+no_sale:
+  - insignia_tank_2
+  - insignia_support_2
+  - insignia_cc_2
+
 maps:
   # galactic. measured over 250 runs: 478 bronze, 153 silver.
   # stars checked over 79 of them: 38,012 = 481 a run, so the 440-520 midpoint holds.

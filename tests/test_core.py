@@ -356,3 +356,13 @@ def test_refill_note_only_when_fuel_lbin_is_above_the_refill():
     prices_over = fmt.prices_table([("fuel", 8000.0, None, False, None)], 1_762_144_320)
     prices_ok = fmt.prices_table([("fuel", 7900.0, None, False, None)], 1_762_144_320)
     assert "refill beats fuel lbin" in prices_over and "refill" not in prices_ok
+
+
+def test_no_sale_items_count_as_zero_unless_asked():
+    entry = DiffDrops("m", "d", 500, 500, items=(ItemDrop("junk", 1, 1), ItemDrop("good", 1, 1)))
+    lbins = {"junk": 1000.0, "good": 100.0}
+    on = compute(entry, lbins, 0, skip={"junk"})
+    off = compute(entry, lbins, 0)
+    assert on.gross == pytest.approx((500 + 100) * 6) and on.skipped
+    assert off.gross == pytest.approx((500 + 1100) * 6) and not off.skipped
+    assert "unlikely to sell: junk" in fmt.ev_table([on], 7000, 1_762_144_320, skipped="junk")

@@ -46,6 +46,7 @@ class DiffDrops:
 class DropTable:
     names: dict[str, str]
     entries: list[DiffDrops] = field(default_factory=list)
+    no_sale: frozenset[str] = frozenset()
 
     @property
     def item_ids(self) -> list[str]:
@@ -129,4 +130,5 @@ def load_drops(path: Path | str) -> DropTable:
                 short=str(raw.get("short", "")).lower(),
             )
         )
-    return DropTable(names=names, entries=entries)
+    no_sale = frozenset(str(i) for i in data.get("no_sale") or [])
+    return DropTable(names=names, entries=entries, no_sale=no_sale)

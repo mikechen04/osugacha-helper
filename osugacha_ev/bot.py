@@ -41,8 +41,9 @@ class EvBot(discord.Client):
 
     def _register(self) -> None:
         @self.tree.command(name="ev", description="fuel ev per map, ranked by profit")
-        async def ev(interaction: discord.Interaction) -> None:
-            await self._send(interaction, self.app.ev_report)
+        @app_commands.describe(likely_to_sell="only count drops that actually sell (default true)")
+        async def ev(interaction: discord.Interaction, likely_to_sell: bool = True) -> None:
+            await self._send(interaction, lambda: self.app.ev_report(likely_to_sell))
 
         @self.tree.command(name="prices", description="lbin for fuel and drops")
         async def prices(interaction: discord.Interaction) -> None:

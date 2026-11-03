@@ -69,6 +69,7 @@ def ev_table(
     *,
     missing: bool = False,
     fuel_shaky: bool = False,
+    skipped: str = "",
 ) -> str:
     head = f"{'#':>2}  {'map':<{MAP_W}}  {'diff':<5}  {'gross ev':>10}  {'after fuel':>11}"
     fuel = star(fuel_lbin) + ("!" if fuel_shaky else "")
@@ -91,6 +92,8 @@ def ev_table(
         lines.append(SHAKY_NOTE)
     if missing:
         lines.append("missing lbin counted as 0")
+    if skipped:
+        lines.append(f"not counted, unlikely to sell: {skipped}")
     if note := refill_note(fuel_lbin):
         lines.append(note)
     return lc(code(lines))
