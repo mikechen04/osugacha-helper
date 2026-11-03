@@ -12,8 +12,8 @@ MAX_ROWS = 20
 MAP_W = 15
 SEP = " ♥ "
 EV_FOOTER = "meow meow wruff arf awruf"
-PRICES_FOOTER = "lbin per unit" + SEP + "! thin or swingy, may not hold"
-SHAKY_NOTE = "! thin or swingy lbin, ev may be off"
+PRICES_FOOTER = "lbin per unit" + SEP + "! volatile lbin, may not hold"
+SHAKY_NOTE = "! volatile lbin, ev may be inaccurate"
 
 
 def lc(text: str) -> str:
