@@ -15,6 +15,8 @@ Uses your read-only osu! gacha API key (`Authorization: Bearer og_...`) for `/ma
 
 | `/alerts on` or `/alerts off` | Pings you in a dm when someone quicksells Fuel. `percent` (default 10) is how far under the next lbin a fresh listing has to be |
 
+| `/cardalerts on` or `/cardalerts off` | Pings you in a dm when a mythic or divine card is listed `percent` (default 15) under the next cheapest buy it now card of the same rarity, at most 15 minutes old. Checked every minute, only while someone is subscribed. The market lists no restricted cards, so those are not covered |
+
 | `/besttime item:` | Best utc hours to sell (high lbin) and buy (low lbin) an item, plus when listings vanish. Needs 24h of data, rough until 3 days |
 
 | `/bp username` | Cheapest battle power upgrades for a player's team: level ups, ascension, eidolons and free mod swaps, ranked by cost per BP (cost in stars at lbin). Leave the username out to use your linked one |

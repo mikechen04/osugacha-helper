@@ -118,6 +118,23 @@ class OsuGachaClient:
                 break
         return Fetch(sorted(found, key=lambda l: l.unit), complete)
 
+    async def card_floor(self, rarity: str, count: int = 20) -> tuple[list[Listing], dict[str, dict]]:
+        """the cheapest buy it now card listings of one rarity, plus each card's details by listing id."""
+        page = await self.get(
+            "market/listings",
+            {"kind": "card", "rarity": rarity, "sort": "price_asc", "limit": count},
+        )
+        listings: list[Listing] = []
+        cards: dict[str, dict] = {}
+        for row in page.get("items", []):
+            card = row.get("card") or {}
+            if row.get("mode") != "bin" or card.get("rarity") != rarity:
+                continue
+            lid = str(row.get("id", ""))
+            listings.append(Listing(lid, float(row["price"]), 1, row["price"], _created(row)))
+            cards[lid] = card
+        return sorted(listings, key=lambda l: l.unit), cards
+
     async def bin_listings(self, item_id: str) -> list[Listing]:
         return (await self.fetch(item_id)).listings
 

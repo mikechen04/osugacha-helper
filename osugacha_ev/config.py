@@ -34,6 +34,11 @@ WARN_SHARE = 0.15
 ALERT_MAX_AGE = 900
 ALERT_MAX_CLUSTER = 2
 ALERT_POLL = 30
+# card undercut alerts: the market sells mythic and divine above legendary (restricted is not listed)
+CARD_RARITIES = ("mythic", "divine")
+CARD_POLL = 60
+CARD_BOTTOM = 20  # how many of the cheapest listings of a rarity to look at
+CARD_DEFAULT_PCT = 15
 
 # best time to sell. listings that vanish between two looks count as gone, but
 # only when the looks are close enough together to trust.

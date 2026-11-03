@@ -18,6 +18,8 @@ from osugacha_ev.config import (
     BESTTIME_HOUR_SAMPLES,
     BESTTIME_MIN_SPAN,
     BESTTIME_ROUGH_SPAN,
+    CARD_BOTTOM,
+    CARD_RARITIES,
     SNAPSHOT_EVERY,
     SWING_PCT,
     Settings,
@@ -174,6 +176,24 @@ class App:
                     title, description, footer = fmt.alert_text(alert)
                     out.append((user_id, Report(title, description, footer)))
         self.store.prune_alerted(now - 7 * 86400)
+        return out
+
+    async def card_alerts(self, now: float | None = None) -> list[tuple[int, Report]]:
+        """new mythic or higher card undercuts for every subscriber. no api calls with no subscribers."""
+        subs = self.store.card_subscribers()
+        if not subs:
+            return []
+        now = now if now is not None else time.time()
+        out: list[tuple[int, Report]] = []
+        for rarity in CARD_RARITIES:
+            listings, cards = await self.client.card_floor(rarity, CARD_BOTTOM)
+            for user_id, pct in subs:
+                for alert in alertmod.detect(listings, pct, now):
+                    if self.store.mark_alerted(alert.listing.id, user_id, now):
+                        title, description, footer = fmt.card_alert_text(
+                            alert, cards.get(alert.listing.id, {}), rarity
+                        )
+                        out.append((user_id, Report(title, description, footer)))
         return out
 
     async def besttime_report(self, item_id: str = FUEL, now: float | None = None) -> Report:

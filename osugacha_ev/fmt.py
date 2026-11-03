@@ -151,6 +151,33 @@ def alert_text(alert) -> tuple[str, str, str]:
     )
 
 
+def card_alert_text(alert, card: dict, rarity: str) -> tuple[str, str, str]:
+    """title, description and footer for a card undercut ping."""
+    listing = alert.listing
+    lines = [
+        f"price  {star(listing.price)}",
+        f"next   {star(alert.next_lbin)}",
+        f"below  {alert.below_pct:.1f}%{SEP}{ago(alert.age)}",
+    ]
+    detail = [f"lvl {card.get('level', 1)}"]
+    if card.get("ascension"):
+        detail.append(f"asc {card['ascension']}")
+    if card.get("eidolon"):
+        detail.append(f"eid {card['eidolon']}")
+    if card.get("mods"):
+        detail.append(f"{len(card['mods'])} mods")
+    if card.get("sig"):
+        detail.append("signature")
+    lines.append(SEP.join(detail))
+    if card.get("serialNo"):
+        lines.append(f"serial #{card['serialNo']}")
+    return (
+        lc(f"{rarity} card undercut"),
+        lc(code(lines)),
+        lc("buy it now" + SEP + "/cardalerts off to stop"),
+    )
+
+
 def span_text(seconds: float) -> str:
     days, rest = divmod(int(seconds), 86400)
     hours = rest // 3600

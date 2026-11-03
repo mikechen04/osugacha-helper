@@ -45,6 +45,10 @@ class SnapshotStore:
             "(user_id integer primary key, pct real not null)"
         )
         self._db.execute(
+            "create table if not exists card_subs "
+            "(user_id integer primary key, pct real not null)"
+        )
+        self._db.execute(
             "create table if not exists open_listings (item text not null, listing_id text not null, "
             "unit real not null, qty integer not null, primary key (item, listing_id))"
         )
@@ -138,6 +142,21 @@ class SnapshotStore:
 
     def subscribers(self) -> list[tuple[int, float]]:
         return list(self._db.execute("select user_id, pct from alert_subs"))
+
+    def set_card_alert(self, user_id: int, pct: float | None) -> None:
+        """subscribe a user to card undercut pings at pct percent, or unsubscribe with None."""
+        if pct is None:
+            self._db.execute("delete from card_subs where user_id = ?", (user_id,))
+        else:
+            self._db.execute(
+                "insert into card_subs values (?, ?) "
+                "on conflict(user_id) do update set pct = excluded.pct",
+                (user_id, pct),
+            )
+        self._db.commit()
+
+    def card_subscribers(self) -> list[tuple[int, float]]:
+        return list(self._db.execute("select user_id, pct from card_subs"))
 
     def mark_alerted(self, listing_id: str, user_id: int, ts: float) -> bool:
         """record that a user was told about a listing. False if they already were."""
