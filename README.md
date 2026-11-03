@@ -17,6 +17,10 @@ Uses your read-only osu! gacha API key (`Authorization: Bearer og_...`) for `/ma
 
 | `/besttime item:` | Best utc hours to sell (high lbin) and buy (low lbin) an item, plus when listings vanish. Needs 24h of data, rough until 3 days |
 
+| `/bp` | Cheapest battle power upgrades for your team: level ups, ascension, eidolons and free mod swaps, ranked by cost per BP, with the cost in stars at lbin |
+
+**Battle power upgrades.** `/bp` reads your own team, mods, items, wallet and account level through the API key, then works out each upgrade's BP gain with the game's own formula (`osugacha_ev/bp.py`, ported from the site's public client code) and its cost (`osugacha_ev/upgrades.py`). Mod swaps only use spare mods and are free. Ascension is skipped until the card is at its level cap and your account level allows it. Eidolons need a spare copy of the same player. Skills and passives are left out on purpose: the formula ignores them, except the Deadeye passive. A `✓` means you already hold the materials. If the game is rebalanced, the tables in `bp.py` have to be updated.
+
 **Best time to sell.** The API has no price history, so the bot builds its own. Every 15 minutes it stores each tracked lbin, and `/besttime` averages those by utc hour. It also watches the full buy-it-now book: a listing that disappears between two looks is counted as gone (sold, cancelled or expired, the API can't tell which), giving a rough "units gone per day" for each hour. Looks more than about 30 minutes apart are ignored, so downtime never fakes sales. History only exists while the bot is running.
 
 **Fuel quicksell pings.** The bot checks the Fuel listings every 30 seconds, but only while someone is subscribed. A listing counts when it is at most 15 minutes old and at least `percent`% under the next lowest lbin (the bottom two listings are checked, so a pair of cheap listings still counts). Each listing pings you once. Run `/alerts on` once in any chat with the app so it knows who to dm. Settings are in `osugacha_ev/config.py`.

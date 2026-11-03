@@ -62,6 +62,10 @@ class EvBot(discord.Client):
             item_id = item.value if item else "fuel"
             await self._send(interaction, lambda: self.app.besttime_report(item_id))
 
+        @self.tree.command(name="bp", description="cheapest battle power upgrades for your team")
+        async def bp(interaction: discord.Interaction) -> None:
+            await self._send(interaction, self.app.bp_report)
+
         @self.tree.command(name="alerts", description="ping me when fuel is quicksold")
         @app_commands.describe(
             mode="turn pings on or off",

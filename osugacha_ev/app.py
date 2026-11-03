@@ -7,6 +7,8 @@ from dataclasses import dataclass
 
 from osugacha_ev import ev as evmath
 from osugacha_ev import alerts as alertmod
+from osugacha_ev import bp as bpmod
+from osugacha_ev import upgrades
 from osugacha_ev import fmt
 from osugacha_ev.api import OsuGachaClient
 from osugacha_ev.config import (
@@ -164,4 +166,65 @@ class App:
                 name, profile.span, sell, buy, busiest, profile.span < BESTTIME_ROUGH_SPAN
             ),
             footer=fmt.lc("lbin by utc hour") + fmt.SEP + fmt.lc("gone = listings that vanished"),
+        )
+
+    async def _spare_mods(self) -> list[bpmod.Mod]:
+        """mods you own that are not on any card."""
+        found: list[bpmod.Mod] = []
+        offset = 0
+        for _ in range(20):
+            page = await self.client.get("mods", {"equipped": "no", "limit": 100, "offset": offset})
+            rows = page.get("items", [])
+            found += [bpmod.Mod.from_api(m) for m in rows if m.get("status") == "available"]
+            offset += len(rows)
+            if not rows or offset >= page.get("total", 0):
+                break
+        return found
+
+    async def _spare_copy_value(self, card: dict) -> float:
+        """market value of your cheapest spare copy of a card's player."""
+        page = await self.client.get("cards", {"playerId": card["player"]["id"], "limit": 100})
+        values = [
+            float(c.get("value", 0))
+            for c in page.get("items", [])
+            if c["id"] != card["id"] and not c.get("locked") and c.get("status") == "available"
+        ]
+        return min(values) if values else 0.0
+
+    async def bp_report(self, count: int = 8) -> Report:
+        """the cheapest battle power upgrades for your team, from your own account."""
+        get = self.client.get
+        squad = (await get("team")).get("squad", [])
+        if not squad:
+            return Report(fmt.lc("battle power"), fmt.lc("no team set on the site yet"), "")
+        wallet = float((await get("wallet")).get("balance", 0))
+        inventory = {i["id"]: i["qty"] for i in (await get("items")).get("items", [])}
+        account_level = int((await get("account/level")).get("level", 1))
+        details = [await get(f"cards/{c['id']}") for c in squad]
+        cards = [(c["player"]["username"], bpmod.Card.from_api(c), c, d) for c, d in zip(squad, details)]
+
+        wanted = {f"replay_{t}" for t in upgrades.REPLAY_XP}
+        for _, card, _, _ in cards:
+            if card.ascension < bpmod.MAX_ASC:
+                wanted.update(upgrades.ascension_cost(card.cls, card.ascension + 1)[0])
+        prices = (await self.prices.get(sorted(wanted))).lbins
+
+        options: list[upgrades.Upgrade] = []
+        for name, card, raw, detail in cards:
+            cap = bpmod.level_cap(card.ascension)
+            if card.level < cap:
+                options.append(upgrades.level_option(name, card, raw.get("xp", 0), cap, prices, inventory, wallet))
+            options.append(upgrades.ascend_option(name, card, 0, prices, inventory, wallet, account_level, False))
+            options.append(upgrades.ascend_option(name, card, 0, prices, inventory, wallet, account_level, True))
+            if detail.get("dupes", 0) > 0 and card.eidolon < 6:
+                value = await self._spare_copy_value(raw)
+                options.append(upgrades.eidolon_option(name, card, detail["dupes"], value))
+        options = [o for o in options if o]
+        options += upgrades.mod_swaps([(n, c) for n, c, _, _ in cards], await self._spare_mods())
+        top = upgrades.rank(options)[:count]
+        team = [(n, c.cls, c.rarity, bpmod.battle_power(c)) for n, c, _, _ in cards]
+        return Report(
+            title=fmt.lc("best bp upgrades"),
+            description=fmt.bp_table(team, top, wallet),
+            footer=fmt.lc("cost = lbin value of what you spend"),
         )
