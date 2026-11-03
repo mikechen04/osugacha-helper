@@ -4,7 +4,7 @@ import httpx
 import pytest
 
 from osugacha_ev import fmt
-from osugacha_ev.api import ApiError, OsuGachaClient, Quote
+from osugacha_ev.api import ApiError, Fetch, Listing, OsuGachaClient
 from osugacha_ev.drops import DiffDrops, ItemDrop, load_drops
 from osugacha_ev.ev import compute, rank
 from osugacha_ev.prices import PriceService
@@ -216,9 +216,9 @@ async def test_price_cache_ttl():
     calls = []
 
     class FakeClient:
-        async def quote(self, item_id):
+        async def fetch(self, item_id):
             calls.append(item_id)
-            return Quote(lbin=7300.0, listings=5, gap=0.01)
+            return Fetch([Listing(str(i), 7300.0 + i, 1, 7300, 0) for i in range(5)], True)
 
     now = [1000.0]
     service = PriceService(FakeClient(), ttl=300, clock=lambda: now[0])
@@ -230,6 +230,7 @@ async def test_price_cache_ttl():
     book = await service.get(["fuel"])
     assert calls == ["fuel", "fuel"]
     assert book.lbins == {"fuel": 7300.0}
+    assert book.quotes["fuel"].listings == 5
     await service.get(["fuel"], force=True)
     assert len(calls) == 3
 

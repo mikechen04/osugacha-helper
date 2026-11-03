@@ -15,6 +15,10 @@ Uses your read-only osu! gacha API key (`Authorization: Bearer og_...`) for `/ma
 
 | `/alerts on` or `/alerts off` | Pings you in a dm when someone quicksells Fuel. `percent` (default 10) is how far under the next lbin a fresh listing has to be |
 
+| `/besttime item:` | Best utc hours to sell (high lbin) and buy (low lbin) an item, plus when listings vanish. Needs 24h of data, rough until 3 days |
+
+**Best time to sell.** The API has no price history, so the bot builds its own. Every 15 minutes it stores each tracked lbin, and `/besttime` averages those by utc hour. It also watches the full buy-it-now book: a listing that disappears between two looks is counted as gone (sold, cancelled or expired, the API can't tell which), giving a rough "units gone per day" for each hour. Looks more than about 30 minutes apart are ignored, so downtime never fakes sales. History only exists while the bot is running.
+
 **Fuel quicksell pings.** The bot checks the Fuel listings every 30 seconds, but only while someone is subscribed. A listing counts when it is at most 15 minutes old and at least `percent`% under the next lowest lbin (the bottom two listings are checked, so a pair of cheap listings still counts). Each listing pings you once. Run `/alerts on` once in any chat with the app so it knows who to dm. Settings are in `osugacha_ev/config.py`.
 
 **Thin market warning.** The API has no sales history, so volume can't be measured directly. Instead an item gets a `!` when its lbin is thin (fewer than 3 buy-it-now listings, or the lowest one is 20% or more under the next) or swingy (lbin moved 20% or more versus 6h ago, or versus the oldest snapshot until 6h exists). In `/ev` a map gets a `!` when flagged items make up at least 15% of its per-run value, and the fuel lbin gets one too if it is flagged. Treat those rows as rough: lbin is a listing floor, not a price you are guaranteed to sell at. The thresholds are in `osugacha_ev/config.py`.

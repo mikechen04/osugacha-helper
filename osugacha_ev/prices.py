@@ -7,7 +7,7 @@ import time
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 
-from osugacha_ev.api import OsuGachaClient, Quote
+from osugacha_ev.api import Fetch, OsuGachaClient, Quote, quote_of
 from osugacha_ev.config import CACHE_TTL, THIN_GAP, THIN_LISTINGS
 
 
@@ -40,7 +40,9 @@ class PriceService:
         *,
         ttl: float = CACHE_TTL,
         clock: Callable[[], float] = time.time,
+        observer: Callable[[str, Fetch, float], None] | None = None,
     ):
+        self._observer = observer
         self._client = client
         self._ttl = ttl
         self._clock = clock
@@ -53,8 +55,11 @@ class PriceService:
             for item_id in ids:
                 cached = self._cache.get(item_id)
                 if force or cached is None or self._clock() - cached[1] >= self._ttl:
-                    quote = await self._client.quote(item_id)
-                    self._cache[item_id] = (quote, self._clock())
+                    fetched = await self._client.fetch(item_id)
+                    now = self._clock()
+                    self._cache[item_id] = (quote_of(fetched.listings), now)
+                    if self._observer:
+                        self._observer(item_id, fetched, now)
         return PriceBook(
             quotes={i: self._cache[i][0] for i in ids},
             fetched_at=min(self._cache[i][1] for i in ids) if ids else self._clock(),

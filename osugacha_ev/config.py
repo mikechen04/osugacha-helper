@@ -33,6 +33,14 @@ ALERT_MAX_AGE = 900
 ALERT_MAX_CLUSTER = 2
 ALERT_POLL = 30
 
+# best time to sell. listings that vanish between two looks count as gone, but
+# only when the looks are close enough together to trust.
+OBS_GAP = 2 * SNAPSHOT_EVERY + 60
+BESTTIME_MIN_SPAN = 24 * 3600
+BESTTIME_ROUGH_SPAN = 3 * 24 * 3600
+BESTTIME_HOUR_SAMPLES = 4
+BESTTIME_DAYS = 14
+
 
 @dataclass(frozen=True)
 class Settings:

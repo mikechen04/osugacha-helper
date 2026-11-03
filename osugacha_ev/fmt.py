@@ -123,3 +123,37 @@ def alert_text(alert) -> tuple[str, str, str]:
         lc(code(lines)),
         lc("buy it now" + SEP + "/alerts off to stop"),
     )
+
+
+def span_text(seconds: float) -> str:
+    days, rest = divmod(int(seconds), 86400)
+    hours = rest // 3600
+    return f"{days}d {hours}h" if days else f"{hours}h"
+
+
+def hour_rows(rows: list[tuple[int, float, float, float | None]]) -> list[str]:
+    """rows are (utc hour, mean lbin, percent vs overall mean, units gone a day)."""
+    return [
+        f"{h:02d}:00  {star(avg):>9}  {pct(vs):>7}  {('%.0f' % gone) if gone is not None else '-':>5}"
+        for h, avg, vs, gone in rows
+    ]
+
+
+def besttime_table(
+    name: str,
+    span: float,
+    sell: list[tuple[int, float, float, float | None]],
+    buy: list[tuple[int, float, float, float | None]],
+    busiest: list[int],
+    rough: bool,
+) -> str:
+    head = f"{'hour':<5}  {'avg lbin':>9}  {'vs avg':>7}  {'gone/d':>5}"
+    lines = [f"{name}{SEP}{span_text(span)} of data{SEP}utc", head, "-" * len(head), "sell high"]
+    lines += hour_rows(sell)
+    if buy:
+        lines += ["buy low"] + hour_rows(buy)
+    if busiest:
+        lines.append("busiest: " + " ".join(f"{h:02d}:00" for h in busiest))
+    if rough:
+        lines.append("rough, under 3 days of data")
+    return lc(code(lines))

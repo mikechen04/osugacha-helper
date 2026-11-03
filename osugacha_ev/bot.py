@@ -48,6 +48,20 @@ class EvBot(discord.Client):
         async def prices(interaction: discord.Interaction) -> None:
             await self._send(interaction, self.app.prices_report)
 
+        item_choices = [
+            app_commands.Choice(name=name, value=item_id)
+            for item_id, name in list(self.app.table.names.items())[:25]
+        ]
+
+        @self.tree.command(name="besttime", description="best utc hours to sell or buy an item")
+        @app_commands.describe(item="which item, default fuel")
+        @app_commands.choices(item=item_choices)
+        async def besttime(
+            interaction: discord.Interaction, item: app_commands.Choice[str] | None = None
+        ) -> None:
+            item_id = item.value if item else "fuel"
+            await self._send(interaction, lambda: self.app.besttime_report(item_id))
+
         @self.tree.command(name="alerts", description="ping me when fuel is quicksold")
         @app_commands.describe(
             mode="turn pings on or off",

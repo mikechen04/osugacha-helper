@@ -7,6 +7,8 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from osugacha_ev.config import OBS_GAP
+
 WINDOW = 6 * 3600
 MIN_AGE = 60
 
@@ -41,6 +43,18 @@ class SnapshotStore:
         self._db.execute(
             "create table if not exists alert_subs "
             "(user_id integer primary key, pct real not null)"
+        )
+        self._db.execute(
+            "create table if not exists open_listings (item text not null, listing_id text not null, "
+            "unit real not null, qty integer not null, primary key (item, listing_id))"
+        )
+        self._db.execute(
+            "create table if not exists gone (item text not null, ts integer not null, "
+            "unit real not null, qty integer not null)"
+        )
+        self._db.execute(
+            "create table if not exists obs (item text primary key, ts integer not null, "
+            "first_ts integer not null)"
         )
         self._db.execute(
             "create table if not exists alerted "
@@ -115,3 +129,85 @@ class SnapshotStore:
     def prune_alerted(self, before: float) -> None:
         self._db.execute("delete from alerted where ts < ?", (int(before),))
         self._db.commit()
+
+    # listing tracker and hour of day profile
+
+    def observe(
+        self,
+        item: str,
+        listings: list[tuple[str, float, int]],
+        ts: float,
+        complete: bool,
+        max_gap: float = OBS_GAP,
+    ) -> int:
+        """record the current buy it now listings (id, unit, qty) for an item.
+
+        a listing that was open at the last look and is missing now is counted as
+        gone (sold, cancelled or expired), but only when the last look was close
+        enough in time and both looks saw the whole book. returns how many went.
+        """
+        ts = int(ts)
+        row = self._db.execute("select ts from obs where item = ?", (item,)).fetchone()
+        last = row[0] if row else None
+        current = {lid: (unit, qty) for lid, unit, qty in listings}
+        gone = []
+        if complete:
+            trusted = last is not None and ts - last <= max_gap
+            for lid, unit, qty in self._db.execute(
+                "select listing_id, unit, qty from open_listings where item = ?", (item,)
+            ).fetchall():
+                if lid not in current:
+                    if trusted:
+                        gone.append((item, ts, unit, qty))
+                    self._db.execute(
+                        "delete from open_listings where item = ? and listing_id = ?", (item, lid)
+                    )
+            self._db.execute(
+                "insert into obs values (?, ?, ?) on conflict(item) do update set ts = excluded.ts",
+                (item, ts, ts),
+            )
+        self._db.executemany(
+            "insert or ignore into open_listings values (?, ?, ?, ?)",
+            [(item, lid, unit, qty) for lid, (unit, qty) in current.items()],
+        )
+        self._db.executemany("insert into gone values (?, ?, ?, ?)", gone)
+        self._db.commit()
+        return len(gone)
+
+    def hour_profile(self, item: str, now: float | None = None, days: int = 14) -> "HourProfile | None":
+        """average stored lbin by utc hour, plus units gone per day by hour."""
+        now = now if now is not None else time.time()
+        since = now - days * 86400
+        count, first, last, overall = self._db.execute(
+            "select count(*), min(ts), max(ts), avg(lbin) from snapshots where item = ? and ts >= ?",
+            (item, since),
+        ).fetchone()
+        if not count:
+            return None
+        hours = {
+            h: (avg, n)
+            for h, avg, n in self._db.execute(
+                "select cast(strftime('%H', ts, 'unixepoch') as integer), avg(lbin), count(*) "
+                "from snapshots where item = ? and ts >= ? group by 1",
+                (item, since),
+            )
+        }
+        obs = self._db.execute("select first_ts from obs where item = ?", (item,)).fetchone()
+        gone: dict[int, float] = {}
+        if obs:
+            watched_days = max((now - obs[0]) / 86400, 1.0)
+            for h, units in self._db.execute(
+                "select cast(strftime('%H', ts, 'unixepoch') as integer), sum(qty) "
+                "from gone where item = ? and ts >= ? group by 1",
+                (item, since),
+            ):
+                gone[h] = units / watched_days
+        return HourProfile(span=last - first, overall=overall, hours=hours, gone=gone)
+
+
+@dataclass(frozen=True)
+class HourProfile:
+    span: float  # seconds between the first and last snapshot used
+    overall: float  # mean stored lbin
+    hours: dict[int, tuple[float, int]]  # utc hour -> (mean lbin, samples)
+    gone: dict[int, float]  # utc hour -> units gone per day

@@ -30,6 +30,12 @@ class Listing:
 
 
 @dataclass(frozen=True)
+class Fetch:
+    listings: list[Listing]
+    complete: bool  # False if the page cap cut the book short
+
+
+@dataclass(frozen=True)
 class Quote:
     lbin: float
     listings: int
@@ -84,7 +90,7 @@ class OsuGachaClient:
         assert last is not None
         raise last
 
-    async def bin_listings(self, item_id: str) -> list[Listing]:
+    async def fetch(self, item_id: str) -> Fetch:
         """every buy it now listing for an item or mod id, cheapest unit first.
 
         item_id is a market item id such as "fuel", or "mod:ht:4" for 4 star
@@ -93,6 +99,7 @@ class OsuGachaClient:
         params, parse = listing_query(item_id)
         found: list[Listing] = []
         offset = 0
+        complete = False
         for _ in range(MAX_PAGES):
             page = await self.get(
                 "market/listings",
@@ -107,20 +114,28 @@ class OsuGachaClient:
                     found.append(listing)
             offset += len(rows)
             if not rows or offset >= page.get("total", 0):
+                complete = True
                 break
-        return sorted(found, key=lambda l: l.unit)
+        return Fetch(sorted(found, key=lambda l: l.unit), complete)
+
+    async def bin_listings(self, item_id: str) -> list[Listing]:
+        return (await self.fetch(item_id)).listings
 
     async def quote(self, item_id: str) -> Quote | None:
         """lowest per unit buy it now price plus how deep the listings are."""
-        units = [l.unit for l in await self.bin_listings(item_id)]
-        if not units:
-            return None
-        gap = units[1] / units[0] - 1 if len(units) > 1 and units[0] > 0 else None
-        return Quote(lbin=units[0], listings=len(units), gap=gap)
+        return quote_of((await self.fetch(item_id)).listings)
 
     async def lbin(self, item_id: str) -> float | None:
         quote = await self.quote(item_id)
         return quote.lbin if quote else None
+
+
+def quote_of(listings: list[Listing]) -> Quote | None:
+    units = sorted(l.unit for l in listings)
+    if not units:
+        return None
+    gap = units[1] / units[0] - 1 if len(units) > 1 and units[0] > 0 else None
+    return Quote(lbin=units[0], listings=len(units), gap=gap)
 
 
 def _created(row: dict) -> float:
