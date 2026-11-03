@@ -28,15 +28,15 @@ items:
   insignia_cc_3: mage insig 3
 
 maps:
-  # galactic. measured over 134 runs: 262 bronze, silver in 87 runs.
-  # (14 run check: 6,822 stars = 487 a run, inside 440-520.)
+  # galactic. measured over 199 runs: 380 bronze, 126 silver.
+  # stars checked over 79 of them: 38,012 = 481 a run, so the 440-520 midpoint holds.
   - map: galaxy collapse
     short: galaxy collapse
     diff: gal
     stars: [440, 520]
     items:
-      replay_1: {range: [1, 3], avg: 262/134}
-      replay_2: {range: [0, 1], avg: 87/134}
+      replay_1: {range: [1, 3], avg: 380/199}
+      replay_2: {range: [0, 1], avg: 126/199}
 
   # top difficulty, no stars. mage insignia is insignia_cc on the market.
   - map: the big black
