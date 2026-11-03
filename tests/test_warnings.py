@@ -81,9 +81,9 @@ def app(tmp_path):
     return App(settings, client=client)
 
 
-def test_shaky_flags_big_move_vs_12h_and_thin_depth(app):
+def test_shaky_flags_big_move_vs_6h_and_thin_depth(app):
     now = 1_000_000.0
-    app.store.add({"calm": 1000.0, "wild": 1000.0, "thin": 1000.0}, now - 12 * 3600 - 5)
+    app.store.add({"calm": 1000.0, "wild": 1000.0, "thin": 1000.0}, now - 6 * 3600 - 5)
     deep = Quote(0, 10, 0.01)
     book = PriceBook(
         quotes={

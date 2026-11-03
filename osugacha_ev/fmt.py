@@ -88,7 +88,7 @@ def prices_table(
     entries: list[tuple[str, float | None, Change | None, bool]], ts: float
 ) -> str:
     changes = [c for _, _, c, _ in entries if c]
-    label = max(changes, key=lambda c: c.age).label if changes else "12h"
+    label = max(changes, key=lambda c: c.age).label if changes else "6h"
     head = f"{'item':<14} {'lbin':>8} {'vs ' + label:>7}  "
     lines = [f"per unit · prices {stamp(ts)}", head.rstrip(), "-" * len(head.rstrip())]
     for name, lbin, change, shaky in entries:

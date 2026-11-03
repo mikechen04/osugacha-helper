@@ -7,7 +7,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-WINDOW = 12 * 3600
+WINDOW = 6 * 3600
 MIN_AGE = 60
 
 
@@ -55,7 +55,7 @@ class SnapshotStore:
         return len(rows)
 
     def change(self, item: str, current: float | None, now: float | None = None) -> Change | None:
-        """percent change vs 12h ago, else vs the oldest snapshot we have."""
+        """percent change vs 6h ago, else vs the oldest snapshot we have."""
         if current is None:
             return None
         now = now if now is not None else time.time()

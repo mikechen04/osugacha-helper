@@ -61,7 +61,7 @@ class App:
         )
 
     def shaky(self, book: PriceBook, now: float | None = None) -> set[str]:
-        """items with thin listings, or whose lbin moved a lot vs 12h ago."""
+        """items with thin listings, or whose lbin moved a lot vs 6h ago."""
         now = now if now is not None else time.time()
         flagged = book.thin()
         for item, lbin in book.lbins.items():

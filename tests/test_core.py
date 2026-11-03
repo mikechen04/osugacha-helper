@@ -237,14 +237,14 @@ async def test_price_cache_ttl():
 # snapshots
 
 
-def test_change_vs_12h_when_available():
+def test_change_vs_6h_when_available():
     store = SnapshotStore(":memory:")
     now = 1_000_000.0
-    store.add({"fuel": 7000.0}, now - 12 * 3600 - 10)
+    store.add({"fuel": 7000.0}, now - 6 * 3600 - 10)
     store.add({"fuel": 7100.0}, now - 3600)
     change = store.change("fuel", 7350.0, now)
     assert change.pct == pytest.approx(5.0)
-    assert change.label == "12h"
+    assert change.label == "6h"
 
 
 def test_change_falls_back_to_oldest_snapshot_with_label():
