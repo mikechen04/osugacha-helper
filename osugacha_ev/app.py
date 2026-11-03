@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
+from urllib.parse import quote
 
 from osugacha_ev import ev as evmath
 from osugacha_ev import alerts as alertmod
 from osugacha_ev import bp as bpmod
 from osugacha_ev import upgrades
 from osugacha_ev import fmt
-from osugacha_ev.api import OsuGachaClient
+from osugacha_ev.api import ApiError, OsuGachaClient
 from osugacha_ev.config import (
     BESTTIME_DAYS,
     BESTTIME_HOUR_SAMPLES,
@@ -168,63 +169,91 @@ class App:
             footer=fmt.lc("lbin by utc hour") + fmt.SEP + fmt.lc("gone = listings that vanished"),
         )
 
-    async def _spare_mods(self) -> list[bpmod.Mod]:
-        """mods you own that are not on any card."""
+    async def _profile(self, username: str) -> dict | None:
+        try:
+            return await self.client.get(f"users/{quote(username, safe='')}/profile")
+        except ApiError as err:
+            if err.status == 404:
+                return None
+            raise
+
+    async def find_user(self, username: str) -> str | None:
+        """the site's spelling of a username, or None if there is no such player."""
+        try:
+            data = await self.client.get(f"users/{quote(username.strip(), safe='')}")
+        except ApiError as err:
+            if err.status == 404:
+                return None
+            raise
+        return (data.get("user") or {}).get("username")
+
+    async def _spare_mods(self, username: str) -> list[bpmod.Mod]:
+        """mods a player owns that are not on a card (the public list holds only those)."""
         found: list[bpmod.Mod] = []
         offset = 0
         for _ in range(20):
-            page = await self.client.get("mods", {"equipped": "no", "limit": 100, "offset": offset})
+            page = await self.client.get(
+                f"users/{quote(username, safe='')}/mods", {"limit": 100, "offset": offset}
+            )
             rows = page.get("items", [])
-            found += [bpmod.Mod.from_api(m) for m in rows if m.get("status") == "available"]
+            found += [bpmod.Mod.from_api(m) for m in rows if not m.get("equippedCardId")]
             offset += len(rows)
             if not rows or offset >= page.get("total", 0):
                 break
         return found
 
-    async def _spare_copy_value(self, card: dict) -> float:
-        """market value of your cheapest spare copy of a card's player."""
-        page = await self.client.get("cards", {"playerId": card["player"]["id"], "limit": 100})
-        values = [
-            float(c.get("value", 0))
-            for c in page.get("items", [])
-            if c["id"] != card["id"] and not c.get("locked") and c.get("status") == "available"
+    async def _copy_price(self, player: dict) -> float | None:
+        """cheapest market listing of any card of this player, the price of a spare copy."""
+        page = await self.client.get(
+            "market/listings",
+            {"kind": "card", "q": player["username"], "sort": "price_asc", "limit": 100},
+        )
+        prices = [
+            float(i["price"])
+            for i in page.get("items", [])
+            if i.get("kind") == "card"
+            and i.get("mode") == "bin"
+            and (i.get("card") or {}).get("player", {}).get("id") == player["id"]
         ]
-        return min(values) if values else 0.0
+        return min(prices) if prices else None
 
-    async def bp_report(self, count: int = 8) -> Report:
-        """the cheapest battle power upgrades for your team, from your own account."""
-        get = self.client.get
-        squad = (await get("team")).get("squad", [])
+    async def bp_report(self, username: str, count: int = 8) -> Report:
+        """the cheapest battle power upgrades for a player's team, from public data only."""
+        profile = await self._profile(username)
+        if profile is None:
+            return Report(fmt.lc("battle power"), fmt.lc(f"no player named {username}"), "")
+        name = (profile.get("user") or {}).get("username") or username
+        squad = profile.get("squad") or []
         if not squad:
-            return Report(fmt.lc("battle power"), fmt.lc("no team set on the site yet"), "")
-        wallet = float((await get("wallet")).get("balance", 0))
-        inventory = {i["id"]: i["qty"] for i in (await get("items")).get("items", [])}
-        account_level = int((await get("account/level")).get("level", 1))
-        details = [await get(f"cards/{c['id']}") for c in squad]
-        cards = [(c["player"]["username"], bpmod.Card.from_api(c), c, d) for c, d in zip(squad, details)]
+            return Report(fmt.lc("battle power"), fmt.lc(f"{name} has no team set"), "")
+        stats = profile.get("stats") or {}
+        account_level = int((stats.get("level") or {}).get("level", 1))
+        cards = [(c["player"]["username"], bpmod.Card.from_api(c), c) for c in squad]
 
         wanted = {f"replay_{t}" for t in upgrades.REPLAY_XP}
-        for _, card, _, _ in cards:
+        for _, card, _ in cards:
             if card.ascension < bpmod.MAX_ASC:
                 wanted.update(upgrades.ascension_cost(card.cls, card.ascension + 1)[0])
         prices = (await self.prices.get(sorted(wanted))).lbins
 
-        options: list[upgrades.Upgrade] = []
-        for name, card, raw, detail in cards:
+        options: list[upgrades.Upgrade | None] = []
+        for card_name, card, raw in cards:
             cap = bpmod.level_cap(card.ascension)
             if card.level < cap:
-                options.append(upgrades.level_option(name, card, raw.get("xp", 0), cap, prices, inventory, wallet))
-            options.append(upgrades.ascend_option(name, card, 0, prices, inventory, wallet, account_level, False))
-            options.append(upgrades.ascend_option(name, card, 0, prices, inventory, wallet, account_level, True))
-            if detail.get("dupes", 0) > 0 and card.eidolon < 6:
-                value = await self._spare_copy_value(raw)
-                options.append(upgrades.eidolon_option(name, card, detail["dupes"], value))
-        options = [o for o in options if o]
-        options += upgrades.mod_swaps([(n, c) for n, c, _, _ in cards], await self._spare_mods())
-        top = upgrades.rank(options)[:count]
-        team = [(n, c.cls, c.rarity, bpmod.battle_power(c)) for n, c, _, _ in cards]
+                options.append(upgrades.level_option(card_name, card, raw.get("xp", 0), cap, prices, {}, 0))
+            options.append(upgrades.ascend_option(card_name, card, 0, prices, {}, 0, account_level, False))
+            options.append(upgrades.ascend_option(card_name, card, 0, prices, {}, 0, account_level, True))
+            if card.eidolon < 6:
+                copy = await self._copy_price(raw["player"])
+                if copy is not None:
+                    options.append(upgrades.eidolon_option(card_name, card, 1, copy))
+        found = [o for o in options if o]
+        found += upgrades.mod_swaps([(n, c) for n, c, _ in cards], await self._spare_mods(name))
+        top = upgrades.rank(found)[:count]
+        team = [(n, c.cls, c.rarity, bpmod.battle_power(c)) for n, c, _ in cards]
+        power = (stats.get("team") or {}).get("power") or sum(t[3] for t in team)
         return Report(
-            title=fmt.lc("best bp upgrades"),
-            description=fmt.bp_table(team, top, wallet),
+            title=fmt.lc(f"best bp upgrades for {name}"),
+            description=fmt.bp_table(team, top, power, account_level),
             footer=fmt.lc("cost = lbin value of what you spend"),
         )

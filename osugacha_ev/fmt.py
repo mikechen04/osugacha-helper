@@ -159,21 +159,18 @@ def besttime_table(
     return lc(code(lines))
 
 
-def bp_table(team, options, wallet: float) -> str:
+def bp_table(team, options, team_power: float, account_level: int) -> str:
     """team is (name, class, rarity, bp) rows, options are upgrades.Upgrade."""
-    total = sum(row[3] for row in team)
-    head = f"{'#':>2}  {'card':<10}  {'upgrade':<18}  {'+bp':>6}  {'cost':>9}"
-    lines = [f"team bp {total:,}{SEP}wallet {star(wallet)}", head, "-" * len(head)]
+    head = f"{'#':>2}  {'card':<10}  {'upgrade':<18}  {'+bp':>6}  {'cost':>8}"
+    lines = [f"team power {team_power:,}{SEP}account lv {account_level}", head, "-" * len(head)]
     for i, o in enumerate(options, 1):
-        cost = "free" if o.stars <= 0 else star(o.stars) + ("✓" if o.ready else "")
+        cost = "free" if o.stars <= 0 else star(o.stars)
         lines.append(
-            f"{i:>2}  {clip(o.card, 10):<10}  {clip(o.label, 18):<18}  {'+' + format(o.gain, ','):>6}  {cost:>9}"
+            f"{i:>2}  {clip(o.card, 10):<10}  {clip(o.label, 18):<18}  {'+' + format(o.gain, ','):>6}  {cost:>8}"
         )
     if not options:
         lines.append("nothing here adds bp right now")
     lines.append("")
     for name, cls, rarity, bp in team:
-        lines.append(f"{clip(name, 10):<10}  {cls:<7}  {rarity:<9}  {bp:>6,}")
-    if any(o.ready and o.stars > 0 for o in options):
-        lines.append("✓ you hold the materials")
+        lines.append(f"{clip(name, 10):<10}  {cls:<7}  {rarity:<9}  {bp:>6,} bp")
     return lc(code(lines))

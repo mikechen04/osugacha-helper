@@ -32,6 +32,11 @@ CLASSES = {
     "support": {"atk": 0.95, "hp": 1.45, "spd": 1.12, "def": 1.05, "crit": 0.0},
     "cc": {"atk": 0.95, "hp": 1.3, "spd": 1.06, "def": 1.02, "crit": 0.0},
 }
+# signature cards play the class of their signature, whatever the player is
+SIG_CLASS = {
+    "volley": "dps", "payload": "dps", "replay": "support", "bite": "tank", "stream": "dps",
+    "ramen": "support", "heatwave": "cc", "rain": "support", "haze": "cc",
+}
 DEF_BASE = 1.6
 CRIT_RATE_BASE = 0.05
 CRIT_DMG_BASE = 0.5
@@ -173,8 +178,9 @@ class Card:
         player = raw.get("player") or {}
         sig = bool(raw.get("sig"))
         passive = None if sig else (raw.get("passive") or player.get("passive"))
+        sig_id = (raw.get("sig") or {}).get("id")
         return cls(
-            cls=player.get("cls") or "dps",
+            cls=SIG_CLASS.get(sig_id) or player.get("cls") or "dps",
             rarity=raw["rarity"],
             level=int(raw["level"]),
             ascension=int(raw["ascension"]),

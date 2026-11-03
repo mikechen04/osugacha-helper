@@ -13,7 +13,12 @@ async def _print(which: str) -> None:
 
     app = App(load_settings(need_discord=False))
     try:
-        report = await {"ev": app.ev_report, "prices": app.prices_report, "bp": app.bp_report, "besttime": app.besttime_report}[which]()
+        report = await {
+            "ev": app.ev_report,
+            "prices": app.prices_report,
+            "bp": lambda: app.bp_report(sys.argv[2]),
+            "besttime": app.besttime_report,
+        }[which]()
     finally:
         await app.aclose()
     print(report.title)
@@ -31,7 +36,7 @@ def main() -> None:
 
         run(load_settings())
     else:
-        raise SystemExit("usage: python -m osugacha_ev [bot|ev|prices|bp|besttime]")
+        raise SystemExit("usage: python -m osugacha_ev [bot|ev|prices|besttime|bp username]")
 
 
 if __name__ == "__main__":

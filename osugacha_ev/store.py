@@ -57,6 +57,9 @@ class SnapshotStore:
             "first_ts integer not null)"
         )
         self._db.execute(
+            "create table if not exists links (discord_id integer primary key, username text not null)"
+        )
+        self._db.execute(
             "create table if not exists alerted "
             "(listing_id text not null, user_id integer not null, ts integer not null, "
             "primary key (listing_id, user_id))"
@@ -96,6 +99,24 @@ class SnapshotStore:
             return None
         ts, old = row
         return Change(pct=(current - old) / old * 100, age=now - ts)
+
+    # discord user -> osu gacha username
+
+    def set_link(self, discord_id: int, username: str | None) -> None:
+        """link a discord user to an osu gacha username, or unlink with None."""
+        if username is None:
+            self._db.execute("delete from links where discord_id = ?", (discord_id,))
+        else:
+            self._db.execute(
+                "insert into links values (?, ?) "
+                "on conflict(discord_id) do update set username = excluded.username",
+                (discord_id, username),
+            )
+        self._db.commit()
+
+    def get_link(self, discord_id: int) -> str | None:
+        row = self._db.execute("select username from links where discord_id = ?", (discord_id,)).fetchone()
+        return row[0] if row else None
 
     # fuel quicksell alerts
 

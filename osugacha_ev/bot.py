@@ -62,9 +62,40 @@ class EvBot(discord.Client):
             item_id = item.value if item else "fuel"
             await self._send(interaction, lambda: self.app.besttime_report(item_id))
 
-        @self.tree.command(name="bp", description="cheapest battle power upgrades for your team")
-        async def bp(interaction: discord.Interaction) -> None:
-            await self._send(interaction, self.app.bp_report)
+        @self.tree.command(name="bp", description="cheapest battle power upgrades for a player's team")
+        @app_commands.describe(username="osu gacha username, or leave empty to use your linked one")
+        async def bp(interaction: discord.Interaction, username: str | None = None) -> None:
+            name = (username or "").strip() or self.app.store.get_link(interaction.user.id)
+            if not name:
+                await interaction.response.send_message(
+                    fmt.lc("give a username, or link yours with /link username"), ephemeral=True
+                )
+                return
+            await self._send(interaction, lambda: self.app.bp_report(name))
+
+        @self.tree.command(name="link", description="link your osu gacha username for /bp")
+        @app_commands.describe(username="your osu gacha username")
+        async def link(interaction: discord.Interaction, username: str) -> None:
+            await interaction.response.defer(ephemeral=True)
+            try:
+                found = await self.app.find_user(username)
+            except Exception:
+                log.exception("link lookup failed")
+                await interaction.followup.send(fmt.lc("could not reach the site, try again soon"))
+                return
+            if not found:
+                await interaction.followup.send(fmt.lc(f"no player named {username.strip()}"))
+                return
+            self.app.store.set_link(interaction.user.id, found)
+            await interaction.followup.send(fmt.lc(f"linked to {found}. /bp now uses it by default"))
+
+        @self.tree.command(name="unlink", description="remove your linked osu gacha username")
+        async def unlink(interaction: discord.Interaction) -> None:
+            had = self.app.store.get_link(interaction.user.id)
+            self.app.store.set_link(interaction.user.id, None)
+            await interaction.response.send_message(
+                fmt.lc("unlinked" if had else "nothing was linked"), ephemeral=True
+            )
 
         @self.tree.command(name="alerts", description="ping me when fuel is quicksold")
         @app_commands.describe(

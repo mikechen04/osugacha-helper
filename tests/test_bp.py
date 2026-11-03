@@ -187,14 +187,27 @@ def test_rank_puts_free_first_then_cheapest_per_bp():
 
 
 def test_bp_table_style():
-    team = [("camo", "cc", "divine", 26130), ("xootynator", "support", "mythic", 8605)]
-    ups = [up.Upgrade("vaxei", "swap nc5 for dt5", 2048, 0, True),
-           up.Upgrade("celybi", "level 60 to 70", 2388, 35880, True),
-           up.Upgrade("xootynator", "a5 + level 70", 4434, 67115, False)]
-    table = fmt.bp_table(team, ups, 30524)
+    team = [("camo", "dps", "divine", 28923), ("xootynator", "support", "mythic", 8605)]
+    ups = [up.Upgrade("vaxei", "swap nc5 for dt5", 2048, 0),
+           up.Upgrade("celybi", "level 60 to 70", 2388, 35880),
+           up.Upgrade("xootynator", "a5 + level 70", 4434, 67115)]
+    table = fmt.bp_table(team, ups, 63656, 26)
     lines = table.strip("`\n").splitlines()
-    assert lines[0] == "team bp 34,735 ♥ wallet ★30,524"
-    assert table == table.lower() and "—" not in table
-    assert "free" in lines[3] and "★35,880✓" in lines[4]
-    assert lines[-1] == "✓ you hold the materials"
+    assert lines[0] == "team power 63,656 \u2665 account lv 26"
+    assert table == table.lower() and "\u2014" not in table
+    assert lines[3].endswith("free") and lines[4].endswith("\u260535,880")
+    assert lines[-2] == "camo        dps      divine     28,923 bp"
+    assert "wallet" not in table and "\u2713" not in table
     assert max(len(l) for l in lines) <= 56
+
+
+def test_signature_cards_use_the_signature_class():
+    raw = {
+        "rarity": "divine", "level": 80, "ascension": 6, "eidolon": 4, "passive": None,
+        "sig": {"id": "volley", "tier": "ssr"}, "mods": [],
+        "player": {"cls": "cc", "passive": "thrifty"},
+    }
+    card = Card.from_api(raw)
+    assert card.cls == "dps" and card.sig and card.passive is None
+    assert Card.from_api({**raw, "sig": None}).cls == "cc"
+    assert Card.from_api({**raw, "sig": {"id": "heatwave", "tier": "r"}}).cls == "cc"
