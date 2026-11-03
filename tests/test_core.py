@@ -78,14 +78,61 @@ def test_measured_average_overrides_range_midpoint(tmp_path):
     assert row.gross == pytest.approx((480 + 236 / 120 * 150 + 77 / 120 * 600) * 6)
 
 
+def test_mods_block_expands_to_priced_ids(tmp_path):
+    path = tmp_path / "d.yaml"
+    path.write_text(
+        "maps:\n  - map: rc\n    diff: top\n    stars: 0\n"
+        "    mods: {count: 2, types: [ht, sd, dt], rarity: {4: 0.9, 5: 0.1}}\n",
+        encoding="utf-8",
+    )
+    entry = load_drops(path).entries[0]
+    assert [d.item for d in entry.items] == [
+        "mod:ht:4", "mod:ht:5", "mod:sd:4", "mod:sd:5", "mod:dt:4", "mod:dt:5"
+    ]
+    assert sum(d.avg for d in entry.items) == pytest.approx(2)
+    assert sum(d.avg for d in entry.items if d.item.endswith(":5")) == pytest.approx(0.2)
+    lbins = {f"mod:{t}:{r}": p for t in ("ht", "sd", "dt") for r, p in ((4, 1000.0), (5, 5000.0))}
+    row = compute(entry, lbins, 0)
+    assert row.gross == pytest.approx(2 * (0.9 * 1000 + 0.1 * 5000) * 6)
+
+
+def test_mods_block_rejects_bad_weights(tmp_path):
+    path = tmp_path / "d.yaml"
+    path.write_text(
+        "maps:\n  - map: rc\n    diff: top\n    mods: {count: 2, types: [ht], rarity: {4: 0.5}}\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError):
+        load_drops(path)
+
+
+async def test_mod_lbin_filters_type_and_rarity():
+    seen = []
+
+    def handler(req):
+        seen.append(req.url.params)
+        rows = [
+            {"price": 900, "mode": "bin", "mod": {"type": "ht", "rarity": 4}},
+            {"price": 100, "mode": "bin", "mod": {"type": "sd", "rarity": 4}},
+            {"price": 50, "mode": "auction", "mod": {"type": "ht", "rarity": 4}},
+            {"price": 700, "mode": "bin", "mod": {"type": "ht", "rarity": 4}},
+        ]
+        return httpx.Response(200, json={"items": rows, "total": 4})
+
+    client = client_for(handler)
+    assert await client.lbin("mod:ht:4") == 700
+    assert seen[0]["kind"] == "mod" and seen[0]["modType"] == "ht" and seen[0]["modRarity"] == "4"
+    await client.aclose()
+
+
 def test_repo_drops_yaml_is_valid():
     from osugacha_ev.config import ROOT
 
     table = load_drops(ROOT / "drops.yaml")
-    assert len(table.entries) >= 3
+    assert len(table.entries) >= 7
     for entry in table.entries:
         assert len(entry.label) <= 12 and len(entry.diff) <= 5
-        assert all(d.item in table.names for d in entry.items)
+        assert all(d.item in table.names or d.item.startswith("mod:") for d in entry.items)
 
 
 # api

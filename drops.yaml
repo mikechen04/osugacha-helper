@@ -6,6 +6,9 @@
 # stars and item amounts are a number or [min, max]. the average used is the
 # middle of the range. to use a measured average instead, write
 #   replay_2: {range: [0, 1], avg: 77/120}      # 77 drops over 120 runs
+# a mods block adds mod drops priced at the lbin of each type and star level:
+#   mods: {count: 2, types: [ht, sd, dt], rarity: {4: 0.9, 5: 0.1}}
+#   = 2 mods a win, each a random type from the list, 90% 4 star, 10% 5 star.
 # estimated: true puts a * next to the map in /ev.
 
 # item id -> name shown in /prices. every id here is priced.
@@ -14,6 +17,7 @@ items:
   replay_1: bronze replay
   replay_2: silver replay
   replay_3: gold replay
+  mod_fragment: mod fragment
   insignia_tank_2: tank insig 2
   insignia_tank_3: tank insig 3
   insignia_dps_2: dps insig 2
@@ -24,14 +28,15 @@ items:
   insignia_cc_3: mage insig 3
 
 maps:
-  # galactic. 120 run sample: 236 bronze, 77 runs dropped 1 silver.
+  # galactic. measured over 134 runs: 262 bronze, silver in 87 runs.
+  # (14 run check: 6,822 stars = 487 a run, inside 440-520.)
   - map: galaxy collapse
     short: gal collapse
     diff: gal
     stars: [440, 520]
     items:
-      replay_1: {range: [1, 3], avg: 236/120}
-      replay_2: {range: [0, 1], avg: 77/120}
+      replay_1: {range: [1, 3], avg: 262/134}
+      replay_2: {range: [0, 1], avg: 87/134}
 
   # top difficulty, no stars. mage insignia is insignia_cc on the market.
   - map: the big black
@@ -54,5 +59,43 @@ maps:
       insignia_cc_2: 1
       insignia_cc_3: [1, 2]
 
-  # still needed: remote control, everything will freeze, scarlet rose, shiori,
-  # and the lower difficulties of every map.
+  # top difficulty: 65-85 mod fragments and 2 mods a win, no stars. the panel
+  # does not say how the mod type is picked, so an even split is assumed and
+  # the maps are marked estimated.
+  - map: remote control
+    short: remote ctrl
+    diff: top
+    estimated: true
+    stars: 0
+    items:
+      mod_fragment: [65, 85]
+    mods: {count: 2, types: [ht, sd, dt], rarity: {4: 0.9, 5: 0.1}}
+
+  - map: everything will freeze
+    short: will freeze
+    diff: top
+    estimated: true
+    stars: 0
+    items:
+      mod_fragment: [65, 85]
+    mods: {count: 2, types: [nf, hd, pf], rarity: {4: 0.9, 5: 0.1}}
+
+  - map: scarlet rose
+    short: scar rose
+    diff: top
+    estimated: true
+    stars: 0
+    items:
+      mod_fragment: [65, 85]
+    mods: {count: 2, types: [ez, hr, so], rarity: {4: 0.9, 5: 0.1}}
+
+  - map: shiori
+    short: shiori
+    diff: top
+    estimated: true
+    stars: 0
+    items:
+      mod_fragment: [65, 85]
+    mods: {count: 2, types: [fl, nc, rx], rarity: {4: 0.9, 5: 0.1}}
+
+  # still needed: the lower difficulties of every map.

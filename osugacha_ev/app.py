@@ -55,13 +55,19 @@ class App:
             footer=fmt.EV_FOOTER,
         )
 
+    def _label(self, item_id: str) -> str:
+        if item_id.startswith("mod:"):
+            _, mod_type, star = item_id.split(":")
+            return f"{mod_type} {star}★"
+        return self.table.names.get(item_id, item_id.replace("_", " "))
+
     async def prices_report(self) -> Report:
-        ids = self._tracked()
+        ids = [FUEL] + [i for i in self.table.names if i != FUEL]
         book = await self.prices.get(ids)
         now = time.time()
         entries = [
             (
-                self.table.names.get(i, i.replace("_", " ")),
+                self._label(i),
                 book.lbins[i],
                 self.store.change(i, book.lbins[i], now),
             )

@@ -87,6 +87,25 @@ def _item(item: str, spec, where: str) -> ItemDrop:
     return ItemDrop(item, *_span(spec, f"{where} {item}"))
 
 
+def _mods(spec: dict, where: str) -> tuple[ItemDrop, ...]:
+    """expand a mods block into one item per (type, rarity) at its expected rate.
+
+    mods: {count: 2, types: [ht, sd, dt], rarity: {4: 0.9, 5: 0.1}}
+    means 2 mods a win, each a random type from the list, 90% 4 star and 10%
+    5 star. the ids look like mod:ht:4 and are priced at their lbin.
+    """
+    count = float(spec["count"])
+    types = [str(t).lower() for t in spec["types"]]
+    rarity = {int(r): float(w) for r, w in spec["rarity"].items()}
+    if not types or abs(sum(rarity.values()) - 1) > 0.01:
+        raise ValueError(f"{where}: mods need types and rarity weights that add up to 1")
+    return tuple(
+        ItemDrop(f"mod:{mod_type}:{star}", 0, count, count * weight / len(types))
+        for mod_type in types
+        for star, weight in rarity.items()
+    )
+
+
 def load_drops(path: Path | str) -> DropTable:
     data = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
     names = {str(k): str(v).lower() for k, v in (data.get("items") or {}).items()}
@@ -97,6 +116,8 @@ def load_drops(path: Path | str) -> DropTable:
         items = tuple(
             _item(str(item), spec, where) for item, spec in (raw.get("items") or {}).items()
         )
+        if raw.get("mods"):
+            items += _mods(raw["mods"], where)
         entries.append(
             DiffDrops(
                 map=str(raw["map"]).lower(),
