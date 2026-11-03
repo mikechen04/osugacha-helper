@@ -228,23 +228,25 @@ def test_ev_output_style():
             DiffDrops(
                 "galaxy collapse", "gal", 440, 520, GC.items, estimated=True, short="gal collapse"
             ),
-            DiffDrops("everything will freeze", "expert+", 300, 400),
+            DiffDrops("everything will freeze", "expert+", 300, 400, short="will freeze"),
         ],
         LBINS,
         7300,
     )
-    table = fmt.ev_table(rows)
-    footer = fmt.ev_footer(7300, 1_762_144_320)
-    for text in (table, footer):
+    table = fmt.ev_table(rows, 7300, 1_762_144_320)
+    for text in (table, fmt.EV_FOOTER, fmt.PRICES_FOOTER):
         assert text == text.lower()
         assert "—" not in text
+        assert len(text.splitlines()) == 1 or text is table
     body = table.strip("`\n").splitlines()
-    assert max(len(line) for line in body) <= 38
-    assert body[0].split() == ["#", "map", "diff", "gross", "ev", "profit"]
-    assert "gal collapse*" not in table  # 12 chars + * would overflow the column
-    assert "gal collaps*" in table
+    assert body[0] == "fuel ★7,300 (lbin) · 6 runs · prices 04:32 utc"
+    assert body[1].split() == ["#", "map", "diff", "gross", "ev", "after", "fuel"]
+    assert set(body[2]) == {"-"} and len(body[2]) == len(body[1])
+    assert max(len(line) for line in body) <= 50
+    assert "gal collaps*" in table and "gal collapse*" not in table
+    assert "★44,880" in table
+    assert "best: gal collapse gal · ★" in table
     assert "* estimated drops" in table
-    assert "\n" not in footer and footer == "fuel lbin 7,300 | 11/03 04:32 utc"
 
 
 def test_prices_output_style():
@@ -252,14 +254,16 @@ def test_prices_output_style():
     store.add({"fuel": 7000.0}, 1_000_000 - 3 * 3600)
     change = store.change("fuel", 7350.0, 1_000_000)
     table = fmt.prices_table(
-        [("fuel", 7350.0, change), ("gold replay", None, None), ("mod fragment", 12.0, None)]
+        [("fuel", 7350.0, change), ("gold replay", None, None), ("mod fragment", 12.0, None)],
+        1_762_144_320,
     )
     assert table == table.lower()
     lines = table.strip("`\n").splitlines()
-    assert "vs 3h" in lines[0]
-    assert "+5.0%" in lines[1] and "7,350" in lines[1]
-    assert "n/a" in lines[2]
-    assert max(len(line) for line in lines) <= 32
+    assert lines[0] == "per unit · prices 04:32 utc"
+    assert "vs 3h" in lines[1] and set(lines[2]) == {"-"}
+    assert "+5.0%" in lines[3] and "★7,350" in lines[3]
+    assert "n/a" in lines[4]
+    assert max(len(line) for line in lines) <= 33
 
 
 def test_lc_strips_em_dashes_and_caps():

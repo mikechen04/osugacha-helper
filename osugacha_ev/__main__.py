@@ -22,6 +22,7 @@ async def _print(which: str) -> None:
 
 
 def main() -> None:
+    sys.stdout.reconfigure(encoding="utf-8")
     which = sys.argv[1] if len(sys.argv) > 1 else "bot"
     if which in ("ev", "prices"):
         asyncio.run(_print(which))

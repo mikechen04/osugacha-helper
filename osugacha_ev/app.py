@@ -47,13 +47,12 @@ class App:
         if fuel is None:
             return Report("ev", fmt.lc("no fuel listings right now"), "")
         rows = evmath.rank(self.table.entries, book.lbins, fuel)
-        description = fmt.ev_table(rows)
-        if any(r.missing for r in rows):
-            description += "\nmissing lbin counted as 0"
         return Report(
-            title=fmt.lc("ev per fuel, profit after fuel"),
-            description=description,
-            footer=fmt.ev_footer(fuel, book.fetched_at),
+            title=fmt.lc("map ev vs fuel"),
+            description=fmt.ev_table(
+                rows, fuel, book.fetched_at, missing=any(r.missing for r in rows)
+            ),
+            footer=fmt.EV_FOOTER,
         )
 
     async def prices_report(self) -> Report:
@@ -70,8 +69,8 @@ class App:
         ]
         return Report(
             title=fmt.lc("lbin prices"),
-            description=fmt.prices_table(entries),
-            footer=fmt.prices_footer(book.fetched_at),
+            description=fmt.prices_table(entries, book.fetched_at),
+            footer=fmt.PRICES_FOOTER,
         )
 
     async def snapshot(self, *, force: bool = False) -> int:
