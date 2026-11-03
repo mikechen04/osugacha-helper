@@ -13,6 +13,8 @@ Uses your read-only osu! gacha API key (`Authorization: Bearer og_...`) for `/ma
 | `/ev` | Maps ranked by profit after fuel: `# / map / diff / gross ev / profit`. Footer shows the fuel lbin used and the price time |
 | `/prices` | lbin for Fuel and the drop items, with % change vs 12h ago (falls back to the oldest snapshot and says e.g. `vs 3h` until 12h of history exists) |
 
+**Thin market warning.** The API has no sales history, so volume can't be measured directly. Instead an item gets a `!` when its lbin is thin (fewer than 3 buy-it-now listings, or the lowest one is 20% or more under the next) or swingy (lbin moved 20% or more versus 12h ago, or versus the oldest snapshot until 12h exists). In `/ev` a map gets a `!` when flagged items make up at least 15% of its per-run value, and the fuel lbin gets one too if it is flagged. Treat those rows as rough: lbin is a listing floor, not a price you are guaranteed to sell at. The thresholds are in `osugacha_ev/config.py`.
+
 All bot output is lowercase, uses "lbin", and has a pink sidebar.
 
 ## How EV is calculated

@@ -4,7 +4,7 @@ import httpx
 import pytest
 
 from osugacha_ev import fmt
-from osugacha_ev.api import ApiError, OsuGachaClient
+from osugacha_ev.api import ApiError, OsuGachaClient, Quote
 from osugacha_ev.drops import DiffDrops, ItemDrop, load_drops
 from osugacha_ev.ev import compute, rank
 from osugacha_ev.prices import PriceService
@@ -216,9 +216,9 @@ async def test_price_cache_ttl():
     calls = []
 
     class FakeClient:
-        async def lbin(self, item_id):
+        async def quote(self, item_id):
             calls.append(item_id)
-            return 7300.0
+            return Quote(lbin=7300.0, listings=5, gap=0.01)
 
     now = [1000.0]
     service = PriceService(FakeClient(), ttl=300, clock=lambda: now[0])
@@ -301,7 +301,11 @@ def test_prices_output_style():
     store.add({"fuel": 7000.0}, 1_000_000 - 3 * 3600)
     change = store.change("fuel", 7350.0, 1_000_000)
     table = fmt.prices_table(
-        [("fuel", 7350.0, change), ("gold replay", None, None), ("mod fragment", 12.0, None)],
+        [
+            ("fuel", 7350.0, change, False),
+            ("gold replay", None, None, False),
+            ("mod fragment", 12.0, None, True),
+        ],
         1_762_144_320,
     )
     assert table == table.lower()
@@ -310,7 +314,8 @@ def test_prices_output_style():
     assert "vs 3h" in lines[1] and set(lines[2]) == {"-"}
     assert "+5.0%" in lines[3] and "★7,350" in lines[3]
     assert "n/a" in lines[4]
-    assert max(len(line) for line in lines) <= 33
+    assert lines[5].endswith(" !")
+    assert max(len(line) for line in lines) <= 34
 
 
 def test_lc_strips_em_dashes_and_caps():

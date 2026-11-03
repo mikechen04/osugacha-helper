@@ -8,9 +8,9 @@ from dataclasses import dataclass
 from osugacha_ev import ev as evmath
 from osugacha_ev import fmt
 from osugacha_ev.api import OsuGachaClient
-from osugacha_ev.config import SNAPSHOT_EVERY, Settings
+from osugacha_ev.config import SNAPSHOT_EVERY, SWING_PCT, Settings
 from osugacha_ev.drops import DropTable, load_drops
-from osugacha_ev.prices import PriceService
+from osugacha_ev.prices import PriceBook, PriceService
 from osugacha_ev.store import SnapshotStore
 
 FUEL = "fuel"
@@ -46,14 +46,29 @@ class App:
         fuel = book.lbins.get(FUEL)
         if fuel is None:
             return Report("ev", fmt.lc("no fuel listings right now"), "")
-        rows = evmath.rank(self.table.entries, book.lbins, fuel)
+        shaky = self.shaky(book)
+        rows = evmath.rank(self.table.entries, book.lbins, fuel, shaky)
         return Report(
             title=fmt.lc("map ev vs fuel"),
             description=fmt.ev_table(
-                rows, fuel, book.fetched_at, missing=any(r.missing for r in rows)
+                rows,
+                fuel,
+                book.fetched_at,
+                missing=any(r.missing for r in rows),
+                fuel_shaky=FUEL in shaky,
             ),
             footer=fmt.EV_FOOTER,
         )
+
+    def shaky(self, book: PriceBook, now: float | None = None) -> set[str]:
+        """items with thin listings, or whose lbin moved a lot vs 12h ago."""
+        now = now if now is not None else time.time()
+        flagged = book.thin()
+        for item, lbin in book.lbins.items():
+            change = self.store.change(item, lbin, now)
+            if change and abs(change.pct) >= SWING_PCT:
+                flagged.add(item)
+        return flagged
 
     def _label(self, item_id: str) -> str:
         if item_id.startswith("mod:"):
@@ -65,11 +80,13 @@ class App:
         ids = [FUEL] + [i for i in self.table.names if i != FUEL]
         book = await self.prices.get(ids)
         now = time.time()
+        shaky = self.shaky(book, now)
         entries = [
             (
                 self._label(i),
                 book.lbins[i],
                 self.store.change(i, book.lbins[i], now),
+                i in shaky,
             )
             for i in ids
         ]

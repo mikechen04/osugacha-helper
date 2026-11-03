@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass
 from typing import Any
 
 import httpx
@@ -65,14 +66,14 @@ class OsuGachaClient:
         assert last is not None
         raise last
 
-    async def lbin(self, item_id: str) -> float | None:
-        """lowest per unit buy it now price, or None if unlisted.
+    async def quote(self, item_id: str) -> Quote | None:
+        """lowest per unit buy it now price plus how deep the listings are.
 
         item_id is a market item id such as "fuel", or "mod:ht:4" for the
-        cheapest 4 star half time mod.
+        cheapest 4 star half time mod. None if nothing is listed.
         """
         params, unit_price = listing_query(item_id)
-        best: float | None = None
+        units: list[float] = []
         offset = 0
         for _ in range(MAX_PAGES):
             page = await self.get(
@@ -84,12 +85,27 @@ class OsuGachaClient:
                 if row.get("mode") != "bin":
                     continue
                 unit = unit_price(row)
-                if unit is not None and (best is None or unit < best):
-                    best = unit
+                if unit is not None:
+                    units.append(unit)
             offset += len(rows)
             if not rows or offset >= page.get("total", 0):
                 break
-        return best
+        if not units:
+            return None
+        units.sort()
+        gap = units[1] / units[0] - 1 if len(units) > 1 and units[0] > 0 else None
+        return Quote(lbin=units[0], listings=len(units), gap=gap)
+
+    async def lbin(self, item_id: str) -> float | None:
+        quote = await self.quote(item_id)
+        return quote.lbin if quote else None
+
+
+@dataclass(frozen=True)
+class Quote:
+    lbin: float
+    listings: int
+    gap: float | None  # second lowest listing vs the lowest, 0.1 = 10% higher
 
 
 def listing_query(item_id: str):

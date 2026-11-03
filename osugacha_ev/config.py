@@ -19,6 +19,14 @@ PAGE_LIMIT = 100
 MAX_PAGES = 8
 PINK = 0xFF69B4
 
+# low volume warnings. the api has no sales history, so thin means few
+# listings or a lowest listing far under the next one, and swingy means lbin
+# moved this many percent versus 12h ago (or the oldest snapshot we have).
+THIN_LISTINGS = 3
+THIN_GAP = 0.20
+SWING_PCT = 20.0
+WARN_SHARE = 0.15
+
 
 @dataclass(frozen=True)
 class Settings:
