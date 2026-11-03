@@ -321,3 +321,25 @@ def test_prices_output_style():
 def test_lc_strips_em_dashes_and_caps():
     assert fmt.lc("Hello — World") == "hello - world"
     assert not re.search(r"[A-Z]", fmt.lc("ABC"))
+
+
+def test_repo_drops_match_hand_calculation_with_fixed_prices():
+    """freedom dive and galaxy collapse worked by hand, fuel at 7,500."""
+    from osugacha_ev.config import ROOT
+
+    entries = {e.map: e for e in load_drops(ROOT / "drops.yaml").entries}
+    lbins = {
+        "replay_1": 150.0, "replay_2": 600.0,
+        "insignia_support_2": 300.0, "insignia_support_3": 800.0,
+        "insignia_cc_2": 200.0, "insignia_cc_3": 250.0,
+    }
+    # freedom dive: no stars. per run 300 + 1.5 x 800 + 200 + 1.5 x 250 = 2,075
+    fd = compute(entries["freedom dive"], lbins, 7500)
+    assert fd.gross == pytest.approx(2075 * 6)
+    assert fd.after_fee == pytest.approx(2075 * 6 * 0.98)
+    assert fd.profit == pytest.approx(2075 * 6 * 0.98 - 7500)
+    # galaxy collapse: 480 stars (not fee'd) + 262/134 bronze + 87/134 silver
+    gc = compute(entries["galaxy collapse"], lbins, 7500)
+    items = 262 / 134 * 150 + 87 / 134 * 600
+    assert gc.gross == pytest.approx((480 + items) * 6)
+    assert gc.profit == pytest.approx(480 * 6 + items * 6 * 0.98 - 7500)
