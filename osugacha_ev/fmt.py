@@ -9,8 +9,10 @@ from osugacha_ev.ev import EvRow
 from osugacha_ev.store import Change
 
 MAX_ROWS = 20
+MAP_W = 15
+SEP = " ♥ "
 EV_FOOTER = "meow meow wruff arf awruf"
-PRICES_FOOTER = "lbin per unit · ! thin or swingy, may not hold"
+PRICES_FOOTER = "lbin per unit" + SEP + "! thin or swingy, may not hold"
 SHAKY_NOTE = "! thin or swingy lbin, ev may be off"
 
 
@@ -45,11 +47,11 @@ def code(lines: list[str]) -> str:
 
 
 def map_cell(row: EvRow) -> str:
-    """map name in 12 chars, with * for estimated drops and ! for shaky lbin."""
+    """map name, with * for estimated drops and ! for shaky lbin."""
     marks = ("*" if row.estimated else "") + ("!" if row.shaky else "")
     if not marks:
-        return clip(row.map, 12)
-    return row.map[: 12 - len(marks)] + marks
+        return clip(row.map, MAP_W)
+    return row.map[: MAP_W - len(marks)] + marks
 
 
 def ev_table(
@@ -60,21 +62,21 @@ def ev_table(
     missing: bool = False,
     fuel_shaky: bool = False,
 ) -> str:
-    head = f"{'#':>2} {'map':<12} {'diff':<5} {'gross ev':>9} {'after fuel':>10}"
+    head = f"{'#':>2}  {'map':<{MAP_W}}  {'diff':<5}  {'gross ev':>10}  {'after fuel':>11}"
     fuel = star(fuel_lbin) + ("!" if fuel_shaky else "")
     lines = [
-        f"fuel {fuel} (lbin) · {RUNS_PER_FUEL} runs · prices {stamp(ts)}",
+        f"fuel {fuel} (lbin){SEP}{RUNS_PER_FUEL} runs{SEP}prices {stamp(ts)}",
         head,
         "-" * len(head),
     ]
     shown = rows[:MAX_ROWS]
     for i, row in enumerate(shown, 1):
         lines.append(
-            f"{i:>2} {map_cell(row):<12} {clip(row.diff, 5):<5} "
-            f"{star(row.gross):>9} {star(row.profit):>10}"
+            f"{i:>2}  {map_cell(row):<{MAP_W}}  {clip(row.diff, 5):<5}  "
+            f"{star(row.gross):>10}  {star(row.profit):>11}"
         )
     best = rows[0]
-    lines += ["", f"best: {best.map} {best.diff} · {star(best.profit)} after fuel"]
+    lines += ["", f"best: {best.map} {best.diff}{SEP}{star(best.profit)} after fuel"]
     if any(r.estimated for r in shown):
         lines.append("* estimated drops")
     if fuel_shaky or any(r.shaky for r in shown):
@@ -89,12 +91,12 @@ def prices_table(
 ) -> str:
     changes = [c for _, _, c, _ in entries if c]
     label = max(changes, key=lambda c: c.age).label if changes else "6h"
-    head = f"{'item':<14} {'lbin':>8} {'vs ' + label:>7}  "
-    lines = [f"per unit · prices {stamp(ts)}", head.rstrip(), "-" * len(head.rstrip())]
+    head = f"{'item':<16}  {'lbin':>10}  {'vs ' + label:>9}"
+    lines = [f"per unit{SEP}prices {stamp(ts)}", head, "-" * len(head)]
     for name, lbin, change, shaky in entries:
         lines.append(
-            f"{clip(name, 14):<14} {star(lbin) if lbin is not None else 'n/a':>8} "
-            f"{pct(change.pct) if change else '-':>7}" + (" !" if shaky else "")
+            f"{clip(name, 16):<16}  {star(lbin) if lbin is not None else 'n/a':>10}  "
+            f"{pct(change.pct) if change else '-':>9}" + (" !" if shaky else "")
         )
     return lc(code(lines))
 
@@ -112,12 +114,12 @@ def alert_text(alert) -> tuple[str, str, str]:
     lines = [
         f"lbin   {star(listing.unit)}{qty}",
         f"next   {star(alert.next_lbin)}",
-        f"below  {alert.below_pct:.1f}% · {ago(alert.age)}",
+        f"below  {alert.below_pct:.1f}%{SEP}{ago(alert.age)}",
     ]
     if listing.qty > 1:
         lines.insert(1, f"total  {star(listing.price)}")
     return (
         lc("fuel quicksell"),
         lc(code(lines)),
-        lc("buy it now · /alerts off to stop"),
+        lc("buy it now" + SEP + "/alerts off to stop"),
     )

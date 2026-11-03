@@ -131,7 +131,7 @@ def test_repo_drops_yaml_is_valid():
     table = load_drops(ROOT / "drops.yaml")
     assert len(table.entries) >= 7
     for entry in table.entries:
-        assert len(entry.label) <= 12 and len(entry.diff) <= 5
+        assert len(entry.label) <= 15 and len(entry.diff) <= 5
         assert all(d.item in table.names or d.item.startswith("mod:") for d in entry.items)
 
 
@@ -286,13 +286,13 @@ def test_ev_output_style():
         assert "—" not in text
         assert len(text.splitlines()) == 1 or text is table
     body = table.strip("`\n").splitlines()
-    assert body[0] == "fuel ★7,300 (lbin) · 6 runs · prices 04:32 utc"
+    assert body[0] == "fuel ★7,300 (lbin) ♥ 6 runs ♥ prices 04:32 utc"
     assert body[1].split() == ["#", "map", "diff", "gross", "ev", "after", "fuel"]
     assert set(body[2]) == {"-"} and len(body[2]) == len(body[1])
-    assert max(len(line) for line in body) <= 50
-    assert "gal collaps*" in table and "gal collapse*" not in table
+    assert max(len(line) for line in body) <= 54
+    assert "gal collapse*" in table
     assert "★44,880" in table
-    assert "best: gal collapse gal · ★" in table
+    assert "best: gal collapse gal ♥ ★" in table
     assert "* estimated drops" in table
 
 
@@ -310,12 +310,12 @@ def test_prices_output_style():
     )
     assert table == table.lower()
     lines = table.strip("`\n").splitlines()
-    assert lines[0] == "per unit · prices 04:32 utc"
+    assert lines[0] == "per unit ♥ prices 04:32 utc"
     assert "vs 3h" in lines[1] and set(lines[2]) == {"-"}
     assert "+5.0%" in lines[3] and "★7,350" in lines[3]
     assert "n/a" in lines[4]
     assert lines[5].endswith(" !")
-    assert max(len(line) for line in lines) <= 34
+    assert max(len(line) for line in lines) <= 42
 
 
 def test_lc_strips_em_dashes_and_caps():

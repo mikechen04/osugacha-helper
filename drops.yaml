@@ -2,7 +2,7 @@
 # the api does not expose drop tables to api keys, so these come from the
 # "drops a win" panel on the maps page and from your own farm logs.
 #
-# short: name shown in /ev (12 chars max). diff: 5 chars max.
+# short: name shown in /ev (15 chars max). diff: 5 chars max.
 # stars and item amounts are a number or [min, max]. the average used is the
 # middle of the range. to use a measured average instead, write
 #   replay_2: {range: [0, 1], avg: 77/120}      # 77 drops over 120 runs
@@ -31,7 +31,7 @@ maps:
   # galactic. measured over 134 runs: 262 bronze, silver in 87 runs.
   # (14 run check: 6,822 stars = 487 a run, inside 440-520.)
   - map: galaxy collapse
-    short: gal collapse
+    short: galaxy collapse
     diff: gal
     stars: [440, 520]
     items:
@@ -40,7 +40,7 @@ maps:
 
   # top difficulty, no stars. mage insignia is insignia_cc on the market.
   - map: the big black
-    short: big black
+    short: the big black
     diff: top
     stars: 0
     items:
@@ -62,7 +62,7 @@ maps:
   # top difficulty: 65-85 mod fragments and 2 mods a win, no stars. each mod's
   # type is picked at random, so every type listed gets an equal share.
   - map: remote control
-    short: remote ctrl
+    short: remote control
     diff: top
     stars: 0
     items:

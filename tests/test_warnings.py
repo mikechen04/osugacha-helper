@@ -63,13 +63,13 @@ def test_ev_marks_and_note():
     assert " m!" in body[3] or body[3].split()[1] == "m!"
     assert fmt.SHAKY_NOTE in body
     assert table == table.lower()
-    assert max(len(line) for line in body) <= 50
+    assert max(len(line) for line in body) <= 54
 
 
 def test_marks_never_overflow_the_map_column():
-    row = rank([DiffDrops("x", "d", 1, 1, short="abcdefghijkl", estimated=True)], {}, 0, set())[0]
+    row = rank([DiffDrops("x", "d", 1, 1, short="abcdefghijklmno", estimated=True)], {}, 0, set())[0]
     row = type(row)(**{**row.__dict__, "shaky": True})
-    assert fmt.map_cell(row) == "abcdefghij*!"
+    assert fmt.map_cell(row) == "abcdefghijklm*!"
 
 
 @pytest.fixture
