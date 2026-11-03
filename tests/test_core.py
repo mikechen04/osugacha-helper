@@ -339,9 +339,9 @@ def test_repo_drops_match_hand_calculation_with_fixed_prices():
     assert fd.gross == pytest.approx(2075 * 6)
     assert fd.after_fee == pytest.approx(2075 * 6 * 0.98)
     assert fd.profit == pytest.approx(2075 * 6 * 0.98 - 7500)
-    # galaxy collapse: 480 stars (not fee'd) + 380/199 bronze + 126/199 silver
+    # galaxy collapse: 480 stars (not fee'd) + 478/250 bronze + 153/250 silver
     gc = compute(entries["galaxy collapse"], lbins, 7500)
-    items = 380 / 199 * 150 + 126 / 199 * 600
+    items = 478 / 250 * 150 + 153 / 250 * 600
     assert gc.gross == pytest.approx((480 + items) * 6)
     assert gc.profit == pytest.approx(480 * 6 + items * 6 * 0.98 - 7500)
 
