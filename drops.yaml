@@ -59,13 +59,11 @@ maps:
       insignia_cc_2: 1
       insignia_cc_3: [1, 2]
 
-  # top difficulty: 65-85 mod fragments and 2 mods a win, no stars. the panel
-  # does not say how the mod type is picked, so an even split is assumed and
-  # the maps are marked estimated.
+  # top difficulty: 65-85 mod fragments and 2 mods a win, no stars. each mod's
+  # type is picked at random, so every type listed gets an equal share.
   - map: remote control
     short: remote ctrl
     diff: top
-    estimated: true
     stars: 0
     items:
       mod_fragment: [65, 85]
@@ -74,16 +72,14 @@ maps:
   - map: everything will freeze
     short: will freeze
     diff: top
-    estimated: true
     stars: 0
     items:
       mod_fragment: [65, 85]
     mods: {count: 2, types: [nf, hd, pf], rarity: {4: 0.9, 5: 0.1}}
 
   - map: scarlet rose
-    short: scar rose
+    short: scarlet rose
     diff: top
-    estimated: true
     stars: 0
     items:
       mod_fragment: [65, 85]
@@ -92,7 +88,6 @@ maps:
   - map: shiori
     short: shiori
     diff: top
-    estimated: true
     stars: 0
     items:
       mod_fragment: [65, 85]
