@@ -6,6 +6,7 @@ import time
 from dataclasses import dataclass
 
 from osugacha_ev import ev as evmath
+from osugacha_ev import alerts as alertmod
 from osugacha_ev import fmt
 from osugacha_ev.api import OsuGachaClient
 from osugacha_ev.config import SNAPSHOT_EVERY, SWING_PCT, Settings
@@ -103,3 +104,19 @@ class App:
             return 0
         book = await self.prices.get(self._tracked(), force=True)
         return self.store.add(book.lbins, book.fetched_at)
+
+    async def fuel_alerts(self, now: float | None = None) -> list[tuple[int, Report]]:
+        """new fuel quicksells for every subscriber. one api call, none with no subscribers."""
+        subs = self.store.subscribers()
+        if not subs:
+            return []
+        now = now if now is not None else time.time()
+        listings = await self.client.bin_listings(FUEL)
+        out: list[tuple[int, Report]] = []
+        for user_id, pct in subs:
+            for alert in alertmod.detect(listings, pct, now):
+                if self.store.mark_alerted(alert.listing.id, user_id, now):
+                    title, description, footer = fmt.alert_text(alert)
+                    out.append((user_id, Report(title, description, footer)))
+        self.store.prune_alerted(now - 7 * 86400)
+        return out

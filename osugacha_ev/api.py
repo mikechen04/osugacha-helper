@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 import httpx
@@ -16,6 +18,22 @@ class ApiError(RuntimeError):
         self.status = status
         self.payload = payload
         super().__init__(f"api {status}")
+
+
+@dataclass(frozen=True)
+class Listing:
+    id: str
+    unit: float  # per unit buy it now price
+    qty: int
+    price: int  # total for the listing
+    created_at: float  # unix seconds, 0 if unknown
+
+
+@dataclass(frozen=True)
+class Quote:
+    lbin: float
+    listings: int
+    gap: float | None  # second lowest listing vs the lowest, 0.1 = 10% higher
 
 
 class OsuGachaClient:
@@ -66,14 +84,14 @@ class OsuGachaClient:
         assert last is not None
         raise last
 
-    async def quote(self, item_id: str) -> Quote | None:
-        """lowest per unit buy it now price plus how deep the listings are.
+    async def bin_listings(self, item_id: str) -> list[Listing]:
+        """every buy it now listing for an item or mod id, cheapest unit first.
 
-        item_id is a market item id such as "fuel", or "mod:ht:4" for the
-        cheapest 4 star half time mod. None if nothing is listed.
+        item_id is a market item id such as "fuel", or "mod:ht:4" for 4 star
+        half time mods.
         """
-        params, unit_price = listing_query(item_id)
-        units: list[float] = []
+        params, parse = listing_query(item_id)
+        found: list[Listing] = []
         offset = 0
         for _ in range(MAX_PAGES):
             page = await self.get(
@@ -84,15 +102,19 @@ class OsuGachaClient:
             for row in rows:
                 if row.get("mode") != "bin":
                     continue
-                unit = unit_price(row)
-                if unit is not None:
-                    units.append(unit)
+                listing = parse(row)
+                if listing is not None:
+                    found.append(listing)
             offset += len(rows)
             if not rows or offset >= page.get("total", 0):
                 break
+        return sorted(found, key=lambda l: l.unit)
+
+    async def quote(self, item_id: str) -> Quote | None:
+        """lowest per unit buy it now price plus how deep the listings are."""
+        units = [l.unit for l in await self.bin_listings(item_id)]
         if not units:
             return None
-        units.sort()
         gap = units[1] / units[0] - 1 if len(units) > 1 and units[0] > 0 else None
         return Quote(lbin=units[0], listings=len(units), gap=gap)
 
@@ -101,34 +123,34 @@ class OsuGachaClient:
         return quote.lbin if quote else None
 
 
-@dataclass(frozen=True)
-class Quote:
-    lbin: float
-    listings: int
-    gap: float | None  # second lowest listing vs the lowest, 0.1 = 10% higher
+def _created(row: dict) -> float:
+    try:
+        return datetime.fromisoformat(row["createdAt"]).timestamp()
+    except (KeyError, TypeError, ValueError):
+        return 0.0
 
 
-def listing_query(item_id: str):
-    """(query params, row -> unit price or None) for an item or mod id."""
+def listing_query(item_id: str) -> tuple[dict[str, Any], Callable[[dict], Listing | None]]:
+    """(query params, row -> Listing or None) for an item or mod id."""
     if item_id.startswith("mod:"):
         _, mod_type, rarity = item_id.split(":")
         params = {"kind": "mod", "modType": mod_type, "modRarity": int(rarity)}
 
-        def mod_price(row):
+        def parse_mod(row: dict) -> Listing | None:
             mod = row.get("mod") or {}
             if mod.get("type") != mod_type or mod.get("rarity") != int(rarity):
                 return None
-            return float(row["price"])
+            return Listing(str(row.get("id", "")), float(row["price"]), 1, row["price"], _created(row))
 
-        return params, mod_price
+        return params, parse_mod
 
     params = {"kind": "item", "itemId": item_id}
 
-    def item_price(row):
+    def parse_item(row: dict) -> Listing | None:
         item = row.get("item") or {}
         qty = item.get("qty") or 0
         if item.get("id") != item_id or qty <= 0:
             return None
-        return row["price"] / qty
+        return Listing(str(row.get("id", "")), row["price"] / qty, qty, row["price"], _created(row))
 
-    return params, item_price
+    return params, parse_item

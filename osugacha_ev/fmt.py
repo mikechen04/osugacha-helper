@@ -9,7 +9,7 @@ from osugacha_ev.ev import EvRow
 from osugacha_ev.store import Change
 
 MAX_ROWS = 20
-EV_FOOTER = "stars expected · item qty from drops.yaml · lbin"
+EV_FOOTER = "meow meow wruff arf awruf"
 PRICES_FOOTER = "lbin per unit · ! thin or swingy, may not hold"
 SHAKY_NOTE = "! thin or swingy lbin, ev may be off"
 
@@ -97,3 +97,27 @@ def prices_table(
             f"{pct(change.pct) if change else '-':>7}" + (" !" if shaky else "")
         )
     return lc(code(lines))
+
+
+def ago(seconds: float) -> str:
+    if seconds < 90:
+        return f"{max(1, round(seconds))}s ago"
+    return f"{round(seconds / 60)}m ago"
+
+
+def alert_text(alert) -> tuple[str, str, str]:
+    """title, description and footer for a fuel quicksell ping."""
+    listing = alert.listing
+    qty = f" x{listing.qty}" if listing.qty > 1 else ""
+    lines = [
+        f"lbin   {star(listing.unit)}{qty}",
+        f"next   {star(alert.next_lbin)}",
+        f"below  {alert.below_pct:.1f}% · {ago(alert.age)}",
+    ]
+    if listing.qty > 1:
+        lines.insert(1, f"total  {star(listing.price)}")
+    return (
+        lc("fuel quicksell"),
+        lc(code(lines)),
+        lc("buy it now · /alerts off to stop"),
+    )

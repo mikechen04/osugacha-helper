@@ -38,6 +38,15 @@ class SnapshotStore:
             "(ts integer not null, item text not null, lbin real not null)"
         )
         self._db.execute("create index if not exists snap_item_ts on snapshots (item, ts)")
+        self._db.execute(
+            "create table if not exists alert_subs "
+            "(user_id integer primary key, pct real not null)"
+        )
+        self._db.execute(
+            "create table if not exists alerted "
+            "(listing_id text not null, user_id integer not null, ts integer not null, "
+            "primary key (listing_id, user_id))"
+        )
         self._db.commit()
 
     def close(self) -> None:
@@ -73,3 +82,36 @@ class SnapshotStore:
             return None
         ts, old = row
         return Change(pct=(current - old) / old * 100, age=now - ts)
+
+    # fuel quicksell alerts
+
+    def set_alert(self, user_id: int, pct: float | None) -> None:
+        """subscribe a user at pct percent, or unsubscribe with None."""
+        if pct is None:
+            self._db.execute("delete from alert_subs where user_id = ?", (user_id,))
+        else:
+            self._db.execute(
+                "insert into alert_subs values (?, ?) "
+                "on conflict(user_id) do update set pct = excluded.pct",
+                (user_id, pct),
+            )
+        self._db.commit()
+
+    def get_alert(self, user_id: int) -> float | None:
+        row = self._db.execute("select pct from alert_subs where user_id = ?", (user_id,)).fetchone()
+        return row[0] if row else None
+
+    def subscribers(self) -> list[tuple[int, float]]:
+        return list(self._db.execute("select user_id, pct from alert_subs"))
+
+    def mark_alerted(self, listing_id: str, user_id: int, ts: float) -> bool:
+        """record that a user was told about a listing. False if they already were."""
+        cur = self._db.execute(
+            "insert or ignore into alerted values (?, ?, ?)", (listing_id, user_id, int(ts))
+        )
+        self._db.commit()
+        return cur.rowcount == 1
+
+    def prune_alerted(self, before: float) -> None:
+        self._db.execute("delete from alerted where ts < ?", (int(before),))
+        self._db.commit()

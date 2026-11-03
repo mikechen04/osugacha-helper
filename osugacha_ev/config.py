@@ -27,6 +27,12 @@ THIN_GAP = 0.20
 SWING_PCT = 20.0
 WARN_SHARE = 0.15
 
+# fuel quicksell alerts. a listing counts when it is at most this old, and the
+# bottom this many listings are compared with the next lbin above them.
+ALERT_MAX_AGE = 900
+ALERT_MAX_CLUSTER = 2
+ALERT_POLL = 30
+
 
 @dataclass(frozen=True)
 class Settings:

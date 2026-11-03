@@ -13,6 +13,10 @@ Uses your read-only osu! gacha API key (`Authorization: Bearer og_...`) for `/ma
 | `/ev` | Maps ranked by profit after fuel: `# / map / diff / gross ev / profit`. Footer shows the fuel lbin used and the price time |
 | `/prices` | lbin for Fuel and the drop items, with % change vs 6h ago (falls back to the oldest snapshot and says e.g. `vs 3h` until 6h of history exists) |
 
+| `/alerts on` or `/alerts off` | Pings you in a dm when someone quicksells Fuel. `percent` (default 10) is how far under the next lbin a fresh listing has to be |
+
+**Fuel quicksell pings.** The bot checks the Fuel listings every 30 seconds, but only while someone is subscribed. A listing counts when it is at most 15 minutes old and at least `percent`% under the next lowest lbin (the bottom two listings are checked, so a pair of cheap listings still counts). Each listing pings you once. Run `/alerts on` once in any chat with the app so it knows who to dm. Settings are in `osugacha_ev/config.py`.
+
 **Thin market warning.** The API has no sales history, so volume can't be measured directly. Instead an item gets a `!` when its lbin is thin (fewer than 3 buy-it-now listings, or the lowest one is 20% or more under the next) or swingy (lbin moved 20% or more versus 6h ago, or versus the oldest snapshot until 6h exists). In `/ev` a map gets a `!` when flagged items make up at least 15% of its per-run value, and the fuel lbin gets one too if it is flagged. Treat those rows as rough: lbin is a listing floor, not a price you are guaranteed to sell at. The thresholds are in `osugacha_ev/config.py`.
 
 All bot output is lowercase, uses "lbin", and has a pink sidebar.
