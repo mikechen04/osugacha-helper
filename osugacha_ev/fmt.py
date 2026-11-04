@@ -154,11 +154,16 @@ def alert_text(alert) -> tuple[str, str, str]:
 def card_alert_text(alert, card: dict, rarity: str) -> tuple[str, str, str]:
     """title, description and footer for a card undercut ping."""
     listing = alert.listing
-    lines = [
+    lines = []
+    if card.get("_player"):
+        lines.append(f"card   {card['_player'].lower()}")
+    lines += [
         f"price  {star(listing.price)}",
         f"next   {star(alert.next_lbin)}",
         f"below  {alert.below_pct:.1f}%{SEP}{ago(alert.age)}",
     ]
+    if card.get("_seller"):
+        lines.append(f"seller {card['_seller'].lower()}")
     detail = [f"lvl {card.get('level', 1)}"]
     if card.get("ascension"):
         detail.append(f"asc {card['ascension']}")

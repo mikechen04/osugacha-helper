@@ -28,7 +28,11 @@ def make_app(tmp_path, rows_by_rarity, calls):
 def row(lid, price, rarity, created, mode="bin", level=1):
     return {
         "id": lid, "price": price, "mode": mode, "createdAt": iso(created), "kind": "card",
-        "card": {"rarity": rarity, "level": level, "mods": [], "serialNo": 7, "sig": None},
+        "seller": {"username": "SomeSeller"},
+        "card": {
+            "rarity": rarity, "level": level, "mods": [], "serialNo": 7, "sig": None,
+            "player": {"username": "SomePlayer"},
+        },
     }
 
 
@@ -47,6 +51,7 @@ async def test_card_alert_fires_for_a_fresh_undercut_once(tmp_path):
     assert len(pings) == 1 and pings[0][0] == 5
     title, text = pings[0][1].title, pings[0][1].description
     assert title == "mythic card undercut" and "3,000" in text and "3,999" in text and "25.0%" in text
+    assert "someplayer" in text and "someseller" in text
     assert text == text.lower()
     assert await app.card_alerts(now) == []  # each listing pings once
     await app.aclose()

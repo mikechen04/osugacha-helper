@@ -132,7 +132,11 @@ class OsuGachaClient:
                 continue
             lid = str(row.get("id", ""))
             listings.append(Listing(lid, float(row["price"]), 1, row["price"], _created(row)))
-            cards[lid] = card
+            cards[lid] = {
+                **card,
+                "_player": (card.get("player") or {}).get("username"),
+                "_seller": (row.get("seller") or {}).get("username"),
+            }
         return sorted(listings, key=lambda l: l.unit), cards
 
     async def bin_listings(self, item_id: str) -> list[Listing]:
