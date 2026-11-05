@@ -6,12 +6,15 @@ upgrade is ready when you already hold the materials.
 
 from __future__ import annotations
 
+import itertools
 import math
 from collections.abc import Mapping
 from dataclasses import dataclass
 
 from osugacha_ev import bp as bpmod
 from osugacha_ev.bp import Card, Mod
+
+MOD_SLOTS = 3
 
 REPLAY_XP = {1: 1500, 2: 7500, 3: 30000}
 FEED_STARS_PER_XP = {"low": 0.005, "high": 0.02}  # below level 80, from level 80
@@ -164,6 +167,39 @@ def mod_swaps(cards: list[tuple[str, Card]], spares: list[Mod], limit: int = 4) 
         cards[idx] = (name, card.with_(mods=tuple(mods)))
         pool.remove(mod)
     return found
+
+
+def best_mod_loadout(
+    name: str, card: Card, market: Mapping[str, tuple[Mod, float]], slots: int = MOD_SLOTS
+) -> Upgrade | None:
+    """search every combo of up to `slots` mod types for the one that adds the most bp.
+
+    `market` maps mod type -> (the cheapest one on sale at its best rarity, its price).
+    a type the card already carries at an equal or better rarity is free: there is no
+    reason to buy another. this is a full search, not a greedy one, so it finds synergy
+    combos a one-swap-at-a-time search would miss (two mods are often weaker alone than
+    the pair bonus they unlock together).
+    """
+    pool: dict[str, tuple[Mod, float]] = dict(market)
+    for mod in card.mods:
+        have = pool.get(mod.type)
+        if have is None or mod.rarity >= have[0].rarity:
+            pool[mod.type] = (mod, 0.0)
+    types = list(pool)
+    now = bpmod.battle_power(card)
+    best: tuple[int, tuple[str, ...]] | None = None
+    for r in range(1, min(slots, len(types)) + 1):
+        for combo in itertools.combinations(types, r):
+            mods = tuple(pool[t][0] for t in combo)
+            gain = bpmod.battle_power(card.with_(mods=mods)) - now
+            if best is None or gain > best[0]:
+                best = (gain, combo)
+    if best is None or best[0] <= 0:
+        return None
+    gain, combo = best
+    cost = sum(pool[t][1] for t in combo)
+    label = "mods " + "+".join(f"{t}{pool[t][0].rarity}" for t in combo)
+    return Upgrade(name, label, gain, cost, cost <= 0)
 
 
 def rank(options: list[Upgrade]) -> list[Upgrade]:

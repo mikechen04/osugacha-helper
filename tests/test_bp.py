@@ -175,6 +175,37 @@ def test_mod_swaps_take_the_best_spare_and_never_reuse_it():
     assert up.mod_swaps([("one", card)], [mod("ez", 5, atkPct=0.0)]) == []
 
 
+def test_best_mod_loadout_finds_a_synergy_a_greedy_swap_would_miss():
+    # hd + ht + fl together trigger the "pindown" triple combo (b.COMBOS), each one
+    # alone barely moves bp, so a one-swap-at-a-time search would not reach for it.
+    card = Card("cc", "divine", 80, 6, 0, mods=())
+    weak = mod("rx", 1, atkPct=0.0)  # a type with no fixed effect and no combo here: the floor
+    market = {
+        "hd": (mod("hd", 5, atkPct=0.0), 1000.0),
+        "ht": (mod("ht", 5, atkPct=0.0), 1000.0),
+        "fl": (mod("fl", 5, atkPct=0.0), 1000.0),
+        "rx": (weak, 10.0),
+    }
+    best = up.best_mod_loadout("gatari", card, market)
+    assert best is not None
+    assert set(best.label.removeprefix("mods ").replace("5", "").split("+")) == {"hd", "ht", "fl"}
+    assert best.stars == pytest.approx(3000.0) and best.gain > 0 and not best.ready
+    assert "pindown" not in best.label  # the combo name itself is not shown, just the mods
+
+
+def test_best_mod_loadout_is_free_for_what_is_already_equipped():
+    good = mod("hd", 5, atkPct=0.0)
+    card = Card("cc", "divine", 80, 6, 0, mods=(good,))
+    market = {"hd": (mod("hd", 3, atkPct=0.0), 1000.0)}  # the market only has a worse one
+    best = up.best_mod_loadout("gatari", card, market)
+    assert best is None  # the owned hd5 already beats the market's hd3, nothing to add
+
+
+def test_best_mod_loadout_returns_none_with_nothing_worth_buying():
+    card = Card("cc", "divine", 80, 6, 0, mods=())
+    assert up.best_mod_loadout("gatari", card, {}) is None
+
+
 def test_rank_puts_free_first_then_cheapest_per_bp():
     ups = [
         up.Upgrade("a", "pricey", 100, 10_000),

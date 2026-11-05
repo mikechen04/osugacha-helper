@@ -80,6 +80,8 @@ COMBO_WEIGHT = {
            "tempo": 0, "fortress": -.014, "glass": -.025, "sustain": -.035},
 }
 
+MOD_TYPES = ["ez", "nf", "ht", "hr", "sd", "dt", "hd", "fl", "pf", "so", "rx", "nc"]
+
 # mod combos: id -> the mod types that make it, in the game's order
 COMBOS: list[tuple[str, tuple[str, ...]]] = [
     ("burst", ("hd", "dt")), ("crit", ("hd", "hr")), ("hypercarry", ("hd", "dt", "hr")),

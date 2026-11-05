@@ -46,6 +46,7 @@ class App:
         self.store = SnapshotStore(settings.db_file)
         self.prices = PriceService(self.client, observer=self._observe)
         self._market_items: tuple[float, list[str]] = (0.0, [])
+        self._mod_pool: tuple[float, dict[str, tuple[bpmod.Mod, float]]] = (0.0, {})
 
     async def aclose(self) -> None:
         await self.client.aclose()
@@ -123,6 +124,22 @@ class App:
         ids = itemlib.sort_items(found)
         self._market_items = (time.time(), ids)
         return ids
+
+    async def _mod_market(self) -> dict[str, tuple[bpmod.Mod, float]]:
+        """the cheapest mod on sale for every mod type, at its best rarity.
+
+        feeds the full mod combo search in /bp. scanned at most every 15 minutes.
+        """
+        stamped, cached = self._mod_pool
+        if cached and time.time() - stamped < SNAPSHOT_EVERY:
+            return cached
+        pool: dict[str, tuple[bpmod.Mod, float]] = {}
+        for mod_type in bpmod.MOD_TYPES:
+            found = await self.client.mod_floor(mod_type)
+            if found:
+                pool[mod_type] = found
+        self._mod_pool = (time.time(), pool)
+        return pool
 
     def _label(self, item_id: str) -> str:
         if item_id.startswith("mod:"):
@@ -310,6 +327,7 @@ class App:
                 wanted.update(upgrades.ascension_cost(card.cls, card.ascension + 1)[0])
         prices = (await self.prices.get(sorted(wanted))).lbins
 
+        mod_market = await self._mod_market()
         options: list[upgrades.Upgrade | None] = []
         for card_name, card, raw in cards:
             cap = bpmod.level_cap(card.ascension)
@@ -321,6 +339,7 @@ class App:
                 copy = await self._copy_price(raw)
                 if copy is not None:
                     options.append(upgrades.eidolon_option(card_name, card, 1, copy))
+            options.append(upgrades.best_mod_loadout(card_name, card, mod_market))
         found = [o for o in options if o]
         found += upgrades.mod_swaps([(n, c) for n, c, _ in cards], await self._spare_mods(name))
         top = upgrades.rank(found)[:count]

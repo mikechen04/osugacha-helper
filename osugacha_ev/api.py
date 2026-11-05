@@ -10,6 +10,7 @@ from typing import Any
 
 import httpx
 
+from osugacha_ev.bp import Mod
 from osugacha_ev.config import API_BASE, MAX_PAGES, PAGE_LIMIT
 
 
@@ -138,6 +139,25 @@ class OsuGachaClient:
                 "_seller": (row.get("seller") or {}).get("username"),
             }
         return sorted(listings, key=lambda l: l.unit), cards
+
+    async def mod_floor(
+        self, mod_type: str, max_rarity: int = 5, min_rarity: int = 2
+    ) -> tuple[Mod, float] | None:
+        """the cheapest buy it now mod of this type, at the highest rarity on sale.
+
+        tries max_rarity down to min_rarity and stops at the first one anybody sells.
+        """
+        for rarity in range(max_rarity, min_rarity - 1, -1):
+            page = await self.get(
+                "market/listings",
+                {"kind": "mod", "modType": mod_type, "modRarity": rarity, "sort": "price_asc", "limit": 1},
+            )
+            for row in page.get("items", []):
+                mod_raw = row.get("mod") or {}
+                if row.get("mode") != "bin" or mod_raw.get("type") != mod_type or mod_raw.get("rarity") != rarity:
+                    continue
+                return Mod.from_api(mod_raw), float(row["price"])
+        return None
 
     async def bin_listings(self, item_id: str) -> list[Listing]:
         return (await self.fetch(item_id)).listings
